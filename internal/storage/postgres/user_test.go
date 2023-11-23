@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"fangaoxs.com/go-chat/internal/entity"
+	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
 )
 
@@ -30,6 +31,12 @@ func (s *postgresSuite) TestUser() {
 	s.Require().Equal(u.Username, got.Username)
 	s.Require().Equal(u.Password, got.Password)
 	s.Require().Equal(u.Phone, got.Phone)
+
+	err = s.storage.DeleteUser(ses, id)
+	s.Require().Nil(err)
+
+	got, err = s.storage.GetUserByID(ses, id)
+	s.Require().Equal(errors.Code(err), errors.NotFound)
 }
 
 func (s *postgresSuite) addUser(ses storage.Session) *entity.User {

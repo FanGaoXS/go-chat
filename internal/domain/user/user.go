@@ -16,7 +16,8 @@ type RegisterInput struct {
 
 type User interface {
 	RegisterUser(ctx context.Context, input RegisterInput) (int64, error)
-	GetUserById(ctx context.Context, id int64) (*entity.User, error)
+	GetUserByID(ctx context.Context, id int64) (*entity.User, error)
+	DeleteUser(ctx context.Context, id int64) error
 }
 
 func New(env environment.Env, storage storage.Storage) (User, error) {
@@ -51,7 +52,7 @@ func (u *user) RegisterUser(ctx context.Context, input RegisterInput) (int64, er
 	return id, nil
 }
 
-func (u *user) GetUserById(ctx context.Context, id int64) (*entity.User, error) {
+func (u *user) GetUserByID(ctx context.Context, id int64) (*entity.User, error) {
 	ses, err := u.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -63,4 +64,17 @@ func (u *user) GetUserById(ctx context.Context, id int64) (*entity.User, error) 
 	}
 
 	return user, nil
+}
+
+func (u *user) DeleteUser(ctx context.Context, id int64) error {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err = u.storage.DeleteUser(ses, id); err != nil {
+		return err
+	}
+
+	return nil
 }

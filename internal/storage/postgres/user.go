@@ -103,3 +103,12 @@ func (p *postgres) GetUserBySecret(ses storage.Session, username, password strin
 
 	return res[0], nil
 }
+
+func (p *postgres) DeleteUser(ses storage.Session, id int64) error {
+	sqlstr := rebind(`DELETE FROM "user" WHERE id = ?;`)
+	if _, err := ses.Exec(sqlstr, id); err != nil {
+		return wrapPGErrorf(err, "delete user with id: %d failed", id)
+	}
+
+	return nil
+}

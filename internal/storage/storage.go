@@ -13,4 +13,5 @@ type Storage interface {
 	InsertUser(ses Session, i *entity.User) (int64, error)
 	GetUserByID(ses Session, id int64) (*entity.User, error)
 	GetUserBySecret(ses Session, username, password string) (*entity.User, error)
+	DeleteUser(ses Session, id int64) error
 }

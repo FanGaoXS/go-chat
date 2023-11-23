@@ -6,13 +6,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func New(env environment.Env) *Logger {
+func New(env environment.Env) Logger {
 	logger := logrus.New()
 	logger.SetLevel(string2level(env.LogLevel))
 	logger.SetFormatter(&logrus.TextFormatter{})
-	logger.SetReportCaller(true)
+	logger.SetReportCaller(false)
 
-	return &Logger{
+	return Logger{
 		logger: logger.WithFields(logrus.Fields{
 			"app":     env.AppName,
 			"version": env.AppVersion,
