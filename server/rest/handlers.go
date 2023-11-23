@@ -2,7 +2,6 @@ package rest
 
 import (
 	"net/http"
-	"strconv"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/domain/user"
@@ -11,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewHandlers(env environment.Env, logger logger.Logger, user user.User) (*Handlers, error) {
-	return &Handlers{
+func NewHandlers(env environment.Env, logger logger.Logger, user user.User) (Handlers, error) {
+	return Handlers{
 		logger: logger,
 		user:   user,
 	}, nil
@@ -39,29 +38,25 @@ func (h *Handlers) RegisterUser() gin.HandlerFunc {
 			Password: password,
 			Phone:    phone,
 		}
-		id, err := h.user.RegisterUser(ctx, input)
+		subject, err := h.user.RegisterUser(ctx, input)
 		if err != nil {
 			WrapGinError(c, err)
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"id": id,
+			"subject": subject,
 		})
 	}
 }
 
-func (h *Handlers) GetUserByID() gin.HandlerFunc {
+func (h *Handlers) GetUserBySubject() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-		if err != nil {
-			WrapGinError(c, err)
-			return
-		}
+		subject := c.Param("subject")
 
 		ctx := c.Request.Context()
-		u, err := h.user.GetUserByID(ctx, id)
+		u, err := h.user.GetUserBySubject(ctx, subject)
 		if err != nil {
 			WrapGinError(c, err)
 			return
@@ -74,14 +69,10 @@ func (h *Handlers) GetUserByID() gin.HandlerFunc {
 func (h *Handlers) DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// DELETE
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-		if err != nil {
-			WrapGinError(c, err)
-			return
-		}
+		subject := c.Param("subject")
 
 		ctx := c.Request.Context()
-		err = h.user.DeleteUser(ctx, id)
+		err := h.user.DeleteUser(ctx, subject)
 		if err != nil {
 			WrapGinError(c, err)
 			return

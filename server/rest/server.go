@@ -22,11 +22,17 @@ func New(env environment.Env, logger logger.Logger, user user.User) (*Server, er
 	router.Use(gin.Logger()) // middlewares
 
 	v1 := router.Group("api/v1")
-	ug := v1.Group("user")
+	u := v1.Group("user")
 	{
-		ug.POST("", handlers.RegisterUser())
-		ug.GET(":id", handlers.GetUserByID())
-		ug.DELETE(":id", handlers.DeleteUser())
+		u.POST("", handlers.RegisterUser())
+		u.GET(":subject", handlers.GetUserBySubject())
+		u.DELETE(":subject", handlers.DeleteUser())
+	}
+	g := v1.Group("group")
+	{
+		g.POST("")
+		g.GET(":id")
+		g.DELETE(":id")
 	}
 
 	s := &http.Server{

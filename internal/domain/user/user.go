@@ -5,6 +5,7 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/storage"
+	"github.com/google/uuid"
 )
 
 type RegisterInput struct {
@@ -15,9 +16,9 @@ type RegisterInput struct {
 }
 
 type User interface {
-	RegisterUser(ctx context.Context, input RegisterInput) (int64, error)
-	GetUserByID(ctx context.Context, id int64) (*entity.User, error)
-	DeleteUser(ctx context.Context, id int64) error
+	RegisterUser(ctx context.Context, input RegisterInput) (string, error)
+	GetUserBySubject(ctx context.Context, subject string) (*entity.User, error)
+	DeleteUser(ctx context.Context, subject string) error
 }
 
 func New(env environment.Env, storage storage.Storage) (User, error) {
@@ -32,47 +33,48 @@ type user struct {
 	storage storage.Storage
 }
 
-func (u *user) RegisterUser(ctx context.Context, input RegisterInput) (int64, error) {
+func (u *user) RegisterUser(ctx context.Context, input RegisterInput) (string, error) {
 	ses, err := u.storage.NewSession(ctx)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	user := &entity.User{
+	i := &entity.User{
+		Subject:  uuid.NewString(),
 		Nickname: input.Nickname,
 		Username: input.Username,
 		Password: input.Password,
 		Phone:    input.Phone,
 	}
-	id, err := u.storage.InsertUser(ses, user)
+	err = u.storage.InsertUser(ses, i)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	return id, nil
+	return i.Subject, nil
 }
 
-func (u *user) GetUserByID(ctx context.Context, id int64) (*entity.User, error) {
+func (u *user) GetUserBySubject(ctx context.Context, subject string) (*entity.User, error) {
 	ses, err := u.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := u.storage.GetUserByID(ses, id)
+	i, err := u.storage.GetUserBySubject(ses, subject)
 	if err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return i, nil
 }
 
-func (u *user) DeleteUser(ctx context.Context, id int64) error {
+func (u *user) DeleteUser(ctx context.Context, subject string) error {
 	ses, err := u.storage.NewSession(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err = u.storage.DeleteUser(ses, id); err != nil {
+	if err = u.storage.DeleteUser(ses, subject); err != nil {
 		return err
 	}
 
