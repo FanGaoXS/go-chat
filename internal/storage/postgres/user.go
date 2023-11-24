@@ -22,9 +22,8 @@ func (p *postgres) InsertUser(ses storage.Session, i *entity.User) error {
 		i.Phone,
 	}
 
-	var id int64
 	var err error
-	err = ses.QueryRow(sqlstr, args...).Scan(&id)
+	_, err = ses.Exec(sqlstr, args...)
 	if err != nil {
 		return wrapPGErrorf(err, "failed to insert user")
 	}

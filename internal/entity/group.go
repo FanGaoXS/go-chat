@@ -6,12 +6,12 @@ import (
 )
 
 type Group struct {
-	ID        int64
-	Name      string
-	Type      GroupType
-	IsPublic  bool // 是否公开的群
-	CreatedBy string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Type      GroupType `json:"type"`
+	IsPublic  bool      `json:"is_public"` // 是否公开的群
+	CreatedBy string    `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type GroupType int

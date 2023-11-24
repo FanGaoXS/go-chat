@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"fangaoxs.com/go-chat/environment"
+	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/groupmember"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/server/rest"
-	
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -20,8 +22,8 @@ func New(env environment.Env, logger logger.Logger) (*Server, error) {
 	return server, nil
 }
 
-func newServer(env environment.Env, logger logger.Logger, user user.User) (*Server, error) {
-	restServer, err := rest.New(env, logger, user)
+func newServer(env environment.Env, logger logger.Logger, user user.User, group group.Group, groupMember groupmember.GroupMember) (*Server, error) {
+	restServer, err := rest.New(env, logger, user, group, groupMember)
 	if err != nil {
 		return nil, err
 	}

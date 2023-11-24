@@ -1,11 +1,11 @@
 package postgres
 
 import (
-	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fmt"
 	"strings"
 
 	"fangaoxs.com/go-chat/internal/entity"
+	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
 )
 
@@ -107,6 +107,21 @@ func (p *postgres) DeleteGroup(ses storage.Session, id int64) error {
 	sqlstr := rebind(`DELETE FROM "group" WHERE id = ?;`)
 	if _, err := ses.Exec(sqlstr, id); err != nil {
 		return wrapPGErrorf(err, "delete user with subject: %d failed", id)
+	}
+
+	return nil
+}
+
+func (p *postgres) UpdateGroupIsPublic(ses storage.Session, id int64, isPublic bool) error {
+	sqlstr := rebind(`UPDATE "group" 
+                  SET is_public = ? 
+                  WHERE id = ?;`)
+
+	args := []any{isPublic, id}
+
+	_, err := ses.Exec(sqlstr, args...)
+	if err != nil {
+		return wrapPGErrorf(err, "update is_public of group with id: %d to %t failed", id, isPublic)
 	}
 
 	return nil

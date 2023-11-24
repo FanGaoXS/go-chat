@@ -5,14 +5,22 @@ import (
 	"net/http"
 
 	"fangaoxs.com/go-chat/environment"
+	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/groupmember"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
 	"github.com/gin-gonic/gin"
 )
 
-func New(env environment.Env, logger logger.Logger, user user.User) (*Server, error) {
-	handlers, err := NewHandlers(env, logger, user)
+func New(
+	env environment.Env,
+	logger logger.Logger,
+	user user.User,
+	group group.Group,
+	groupMember groupmember.GroupMember,
+) (*Server, error) {
+	handlers, err := NewHandlers(env, logger, user, group, groupMember)
 	if err != nil {
 		return nil, fmt.Errorf("create rest handles failed: %w", err)
 	}
@@ -22,17 +30,21 @@ func New(env environment.Env, logger logger.Logger, user user.User) (*Server, er
 	router.Use(gin.Logger()) // middlewares
 
 	v1 := router.Group("api/v1")
-	u := v1.Group("user")
 	{
-		u.POST("", handlers.RegisterUser())
-		u.GET(":subject", handlers.GetUserBySubject())
-		u.DELETE(":subject", handlers.DeleteUser())
+		v1.POST("registerUser", handlers.RegisterUser())
+		v1.GET("me", AuthMiddleware(user), handlers.Me())
+		v1.GET("myGroups", AuthMiddleware(user), handlers.MyGroups())
 	}
-	g := v1.Group("group")
+
+	g := v1.Group("group", AuthMiddleware(user))
 	{
-		g.POST("")
-		g.GET(":id")
-		g.DELETE(":id")
+		g.POST("", handlers.InsertGroup())
+		g.GET(":id", handlers.GetGroupByID())
+		g.DELETE(":id", handlers.DeleteGroup())
+		g.PUT("toPublic/:id", handlers.PublicGroup())
+		g.PUT("toPrivate/:id", handlers.PrivateGroup())
+		g.PUT("assignUser/:id", handlers.AssignUsersToGroup())
+		g.GET("members/:id", handlers.GroupMembers())
 	}
 
 	s := &http.Server{

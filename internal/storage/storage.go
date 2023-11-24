@@ -19,4 +19,10 @@ type Storage interface {
 	GetGroupByID(ses Session, id int64) (*entity.Group, error)
 	ListGroupByCreatedBy(ses Session, createdBy string) ([]*entity.Group, error)
 	DeleteGroup(ses Session, id int64) error
+	UpdateGroupIsPublic(ses Session, id int64, isPublic bool) error
+
+	InsertGroupMember(ses Session, userSubject string, groupID int64) error
+	GetGroupMember(ses Session, userSubject string, groupID int64) (*entity.GroupMember, error)
+	ListGroupMemberByGroupID(ses Session, groupID int64) ([]*entity.GroupMember, error)
+	ListGroupMemberByUserSubject(ses Session, userSubject string) ([]*entity.GroupMember, error)
 }
