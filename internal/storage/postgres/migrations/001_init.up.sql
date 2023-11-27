@@ -10,6 +10,16 @@ CREATE TABLE IF NOT EXISTS "user"
     CONSTRAINT username_uq UNIQUE (username)
 );
 
+CREATE TABLE IF NOT EXISTS "user_friend"
+(
+    user_subject   varchar(256) NOT NULL,
+    friend_subject varchar(256) NOT NULL,
+    added_at       timestamp NULL DEFAULT now(),
+    CONSTRAINT user_friend_uq UNIQUE (user_subject, friend_subject),
+    CONSTRAINT user_friend_user_fk FOREIGN KEY (user_subject) REFERENCES "user" (subject),
+    CONSTRAINT user_friend_friend_fk FOREIGN KEY (friend_subject) REFERENCES "user" (subject)
+);
+
 CREATE TABLE IF NOT EXISTS "group"
 (
     id         serial       NOT NULL primary key,

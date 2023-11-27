@@ -7,7 +7,6 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
-	"fangaoxs.com/go-chat/internal/domain/groupmember"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
@@ -21,22 +20,19 @@ func NewHandlers(
 	logger logger.Logger,
 	user user.User,
 	group group.Group,
-	groupMember groupmember.GroupMember,
 ) (Handlers, error) {
 	return Handlers{
-		logger:      logger,
-		user:        user,
-		group:       group,
-		groupMember: groupMember,
+		logger: logger,
+		user:   user,
+		group:  group,
 	}, nil
 }
 
 type Handlers struct {
 	logger logger.Logger
 
-	user        user.User
-	group       group.Group
-	groupMember groupmember.GroupMember
+	user  user.User
+	group group.Group
 }
 
 func (h *Handlers) RegisterUser() gin.HandlerFunc {
@@ -95,13 +91,69 @@ func (h *Handlers) Me() gin.HandlerFunc {
 	}
 }
 
+func (h *Handlers) MyFriends() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		friends, err := h.user.ListFriendsOfUser(ctx, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, friends)
+	}
+}
+
+func (h *Handlers) AssignFriends() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		friendSubjects := c.PostFormArray("friend_subject")
+		if len(friendSubjects) == 0 {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty friend subjects"))
+			return
+		}
+
+		if err := h.user.AssignFriendsToUser(ctx, ui.Subject, friendSubjects...); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func (h *Handlers) RemoveFriends() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		friendSubjects := c.PostFormArray("friend_subject")
+		if len(friendSubjects) == 0 {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty friend subjects"))
+			return
+		}
+
+		if err := h.user.RemoveFriendsFromUser(ctx, ui.Subject, friendSubjects...); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
 func (h *Handlers) MyGroups() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		groups, err := h.groupMember.ListGroupsOfUser(ctx, ui.Subject)
+		groups, err := h.group.ListGroupsOfUser(ctx, ui.Subject)
 		if len(groups) == 0 {
 			WrapGinError(c, errors.New(errors.NotFound, nil, "没有群组"))
 			return
@@ -267,7 +319,7 @@ func (h *Handlers) PublicGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) AssignUsersToGroup() gin.HandlerFunc {
+func (h *Handlers) AssignMembersToGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
@@ -294,7 +346,7 @@ func (h *Handlers) AssignUsersToGroup() gin.HandlerFunc {
 			return
 		}
 
-		if err = h.groupMember.AssignUserToGroup(ctx, g.ID, subjects...); err != nil {
+		if err = h.group.AssignMembersToGroup(ctx, g.ID, subjects...); err != nil {
 			WrapGinError(c, err)
 			return
 		}
@@ -303,7 +355,7 @@ func (h *Handlers) AssignUsersToGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) GroupMembers() gin.HandlerFunc {
+func (h *Handlers) MembersOfGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
@@ -320,7 +372,7 @@ func (h *Handlers) GroupMembers() gin.HandlerFunc {
 			return
 		}
 
-		members, err := h.groupMember.ListUsersOfGroup(ctx, g.ID)
+		members, err := h.group.ListMembersOfGroup(ctx, g.ID)
 		if len(members) == 0 {
 			WrapGinError(c, errors.New(errors.NotFound, nil, "没有群成员"))
 			return

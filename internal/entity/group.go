@@ -54,3 +54,9 @@ func (g *GroupType) Scan(value interface{}) error {
 	*g = groupTypeID[value.(string)]
 	return nil
 }
+
+type GroupMember struct {
+	UserSubject string    `json:"user_subject"`
+	GroupID     int64     `json:"group_id"`
+	JoinAt      time.Time `json:"join_at"`
+}

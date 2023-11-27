@@ -21,6 +21,10 @@ type Group interface {
 	DeleteGroup(ctx context.Context, id int64) error
 	PrivateGroup(ctx context.Context, id int64) error
 	PublicGroup(ctx context.Context, id int64) error
+
+	AssignMembersToGroup(ctx context.Context, groupID int64, userSubject ...string) error
+	ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error)
+	ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error)
 }
 
 func New(env environment.Env, storage storage.Storage) (Group, error) {
@@ -82,7 +86,7 @@ func (g *group) ListGroupsByCreatedBy(ctx context.Context, createdBy string) ([]
 		return nil, err
 	}
 
-	res, err := g.storage.ListGroupByCreatedBy(ses, createdBy)
+	res, err := g.storage.ListGroupsByCreatedBy(ses, createdBy)
 	if err != nil {
 		return nil, err
 	}
@@ -130,4 +134,75 @@ func (g *group) PublicGroup(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+func (g *group) AssignMembersToGroup(ctx context.Context, groupID int64, userSubject ...string) error {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, subject := range userSubject {
+		err = g.storage.InsertGroupMember(ses, subject, groupID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (g *group) ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error) {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	gms, err := g.storage.ListGroupMembersByUserSubject(ses, userSubject)
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]*entity.Group, 0, len(gms))
+	for _, gm := range gms {
+		group, err := g.storage.GetGroupByID(ses, gm.GroupID)
+		if err != nil {
+			return nil, err
+		}
+
+		groups = append(groups, group)
+	}
+
+	return groups, nil
+}
+
+func (g *group) ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error) {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	gms, err := g.storage.ListGroupMembersByGroupID(ses, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*entity.User, 0, len(gms))
+	for _, gm := range gms {
+		user, err := g.storage.GetUserBySubject(ses, gm.UserSubject)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
 }

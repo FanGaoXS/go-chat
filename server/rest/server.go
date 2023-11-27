@@ -6,7 +6,6 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/domain/group"
-	"fangaoxs.com/go-chat/internal/domain/groupmember"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
@@ -18,9 +17,8 @@ func New(
 	logger logger.Logger,
 	user user.User,
 	group group.Group,
-	groupMember groupmember.GroupMember,
 ) (*Server, error) {
-	handlers, err := NewHandlers(env, logger, user, group, groupMember)
+	handlers, err := NewHandlers(env, logger, user, group)
 	if err != nil {
 		return nil, fmt.Errorf("create rest handles failed: %w", err)
 	}
@@ -33,6 +31,9 @@ func New(
 	{
 		v1.POST("registerUser", handlers.RegisterUser())
 		v1.GET("me", AuthMiddleware(user), handlers.Me())
+		v1.GET("myFriends", AuthMiddleware(user), handlers.MyFriends())
+		v1.PUT("assignFriends", AuthMiddleware(user), handlers.AssignFriends())
+		v1.DELETE("removeFriends", AuthMiddleware(user), handlers.RemoveFriends())
 		v1.GET("myGroups", AuthMiddleware(user), handlers.MyGroups())
 	}
 
@@ -43,8 +44,8 @@ func New(
 		g.DELETE(":id", handlers.DeleteGroup())
 		g.PUT("toPublic/:id", handlers.PublicGroup())
 		g.PUT("toPrivate/:id", handlers.PrivateGroup())
-		g.PUT("assignUser/:id", handlers.AssignUsersToGroup())
-		g.GET("members/:id", handlers.GroupMembers())
+		g.PUT("assignMembers/:id", handlers.AssignMembersToGroup())
+		g.GET("members/:id", handlers.MembersOfGroup())
 	}
 
 	s := &http.Server{

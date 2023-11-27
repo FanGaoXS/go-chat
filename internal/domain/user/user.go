@@ -4,6 +4,7 @@ import (
 	"context"
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
+	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
 	"github.com/google/uuid"
 )
@@ -19,6 +20,10 @@ type User interface {
 	RegisterUser(ctx context.Context, input RegisterInput) (string, error)
 	GetUserBySubject(ctx context.Context, subject string) (*entity.User, error)
 	DeleteUser(ctx context.Context, subject string) error
+
+	AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error
+	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
+	RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error
 }
 
 func New(env environment.Env, storage storage.Storage) (User, error) {
@@ -78,5 +83,83 @@ func (u *user) DeleteUser(ctx context.Context, subject string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (u *user) AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, fs := range friendSubject {
+		if userSubject == fs {
+			return errors.New(errors.InvalidArgument, nil, "不可以添加自己为好友")
+		}
+
+		uf := &entity.UserFriend{
+			UserSubject:   userSubject,
+			FriendSubject: fs,
+		}
+		if err = u.storage.InsertUserFriend(ses, uf); err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *user) ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error) {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ufs, err := u.storage.ListUserFriendsByUserSubject(ses, userSubject)
+	if err != nil {
+		return nil, err
+	}
+	if len(ufs) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "no friends with user: %s found", userSubject)
+	}
+
+	friends := make([]*entity.User, 0, len(ufs))
+	for _, uf := range ufs {
+		friend, err := u.storage.GetUserBySubject(ses, uf.FriendSubject)
+		if err != nil {
+			return nil, err
+		}
+		friends = append(friends, friend)
+	}
+
+	return friends, nil
+}
+
+func (u *user) RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, fs := range friendSubject {
+		if err = u.storage.DeleteUserFriend(ses, userSubject, fs); err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
 	return nil
 }

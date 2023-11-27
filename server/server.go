@@ -5,7 +5,6 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/domain/group"
-	"fangaoxs.com/go-chat/internal/domain/groupmember"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/server/rest"
@@ -22,8 +21,8 @@ func New(env environment.Env, logger logger.Logger) (*Server, error) {
 	return server, nil
 }
 
-func newServer(env environment.Env, logger logger.Logger, user user.User, group group.Group, groupMember groupmember.GroupMember) (*Server, error) {
-	restServer, err := rest.New(env, logger, user, group, groupMember)
+func newServer(env environment.Env, logger logger.Logger, user user.User, group group.Group) (*Server, error) {
+	restServer, err := rest.New(env, logger, user, group)
 	if err != nil {
 		return nil, err
 	}

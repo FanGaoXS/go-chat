@@ -9,7 +9,6 @@ package server
 import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/domain/group"
-	"fangaoxs.com/go-chat/internal/domain/groupmember"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/internal/storage/postgres"
@@ -30,11 +29,7 @@ func initServer(env environment.Env, logger2 logger.Logger) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	groupMember, err := groupmember.New(env, storage)
-	if err != nil {
-		return nil, err
-	}
-	server, err := newServer(env, logger2, userUser, groupGroup, groupMember)
+	server, err := newServer(env, logger2, userUser, groupGroup)
 	if err != nil {
 		return nil, err
 	}

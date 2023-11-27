@@ -13,7 +13,7 @@ func (p *postgres) InsertUser(ses storage.Session, i *entity.User) error {
 	sqlstr := rebind(`INSERT INTO "user" 
                   (subject, nickname, username, password, phone)
                   VALUES
-                  (?, ?, ?, ?, ?)`)
+                  (?, ?, ?, ?, ?);`)
 	args := []any{
 		i.Subject,
 		i.Nickname,
@@ -107,6 +107,89 @@ func (p *postgres) DeleteUser(ses storage.Session, subject string) error {
 	sqlstr := rebind(`DELETE FROM "user" WHERE subject = ?;`)
 	if _, err := ses.Exec(sqlstr, subject); err != nil {
 		return wrapPGErrorf(err, "delete user with subject: %s failed", subject)
+	}
+
+	return nil
+}
+
+func (p *postgres) InsertUserFriend(ses storage.Session, i *entity.UserFriend) error {
+	sqlstr := rebind(`INSERT INTO "user_friend" 
+                  (user_subject, friend_subject)
+                  VALUES
+                  (?, ?);`)
+	args := []any{
+		i.UserSubject,
+		i.FriendSubject,
+	}
+
+	var err error
+	_, err = ses.Exec(sqlstr, args...)
+	if err != nil {
+		return wrapPGErrorf(err, "failed to insert user friend")
+	}
+
+	return nil
+}
+
+func (p *postgres) listUserFriends(ses storage.Session, where *entity.Where) ([]*entity.UserFriend, error) {
+	projection := []string{
+		"user_subject",
+		"friend_subject",
+		"added_at",
+	}
+
+	var args []any
+	sqlstr := fmt.Sprintf(`SELECT %s FROM "user_friend"`, strings.Join(projection, ", "))
+	if where != nil {
+		sel, selArgs, err := where.Parse()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, selArgs...)
+		sqlstr += sel
+	}
+
+	sqlstr = rebind(sqlstr)
+	rows, err := ses.Query(sqlstr, args...)
+	if err != nil {
+		return nil, wrapPGErrorf(err, "failed to list user friends")
+	}
+	defer rows.Close()
+
+	var res []*entity.UserFriend
+	for rows.Next() {
+		r := entity.UserFriend{}
+		if err = rows.Scan(&r.UserSubject, &r.FriendSubject, &r.AddedAt); err != nil {
+			return nil, wrapPGErrorf(err, "failed to scan user friend")
+		}
+		res = append(res, &r)
+	}
+
+	return res, nil
+}
+
+func (p *postgres) ListUserFriendsByUserSubject(ses storage.Session, userSubject string) ([]*entity.UserFriend, error) {
+	w := &entity.Where{
+		FieldNames:  []string{"user_subject"},
+		FieldValues: []any{userSubject},
+	}
+
+	res, err := p.listUserFriends(ses, w)
+	if err != nil {
+		return nil, wrapPGErrorf(err, "list user friends with user_subject: %s failed", userSubject)
+	}
+
+	return res, nil
+}
+
+func (p *postgres) DeleteUserFriend(ses storage.Session, userSubject, friendSubject string) error {
+	sqlstr := rebind(`DELETE FROM "user_friend" WHERE user_subject = ? AND friend_subject = ?;`)
+	args := []any{
+		userSubject,
+		friendSubject,
+	}
+	if _, err := ses.Exec(sqlstr, args...); err != nil {
+		return wrapPGErrorf(err, "delete user friend with user_subject: %s and friend_subject: %s failed", userSubject, friendSubject)
 	}
 
 	return nil
