@@ -1,6 +1,9 @@
 package rest
 
 import (
+	"net/http"
+	"strconv"
+
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
@@ -9,8 +12,6 @@ import (
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/infras/logger"
-	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -101,6 +102,10 @@ func (h *Handlers) MyGroups() gin.HandlerFunc {
 		ui := auth.FromContext(ctx)
 
 		groups, err := h.groupMember.ListGroupsOfUser(ctx, ui.Subject)
+		if len(groups) == 0 {
+			WrapGinError(c, errors.New(errors.NotFound, nil, "没有群组"))
+			return
+		}
 		if err != nil {
 			WrapGinError(c, err)
 			return
@@ -125,12 +130,12 @@ func (h *Handlers) InsertGroup() gin.HandlerFunc {
 			groupType = entity.DefaultGroupType
 		}
 
-		input := group.InsertGroupInput{
+		input := group.CreateGroupInput{
 			Name:      c.PostForm("name"),
 			Type:      groupType,
 			CreatedBy: ui.Subject,
 		}
-		id, err := h.group.InsertGroup(ctx, input)
+		id, err := h.group.CreateGroup(ctx, input)
 		if err != nil {
 			WrapGinError(c, err)
 			return
@@ -289,11 +294,9 @@ func (h *Handlers) AssignUsersToGroup() gin.HandlerFunc {
 			return
 		}
 
-		for _, subject := range subjects {
-			if err = h.groupMember.AddUserToGroup(ctx, subject, groupID); err != nil {
-				WrapGinError(c, err)
-				return
-			}
+		if err = h.groupMember.AssignUserToGroup(ctx, g.ID, subjects...); err != nil {
+			WrapGinError(c, err)
+			return
 		}
 
 		c.Status(http.StatusOK)
@@ -311,7 +314,17 @@ func (h *Handlers) GroupMembers() gin.HandlerFunc {
 			return
 		}
 
-		members, err := h.groupMember.ListUsersOfGroup(ctx, groupID)
+		g, err := h.group.GetGroupByID(ctx, groupID)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		members, err := h.groupMember.ListUsersOfGroup(ctx, g.ID)
+		if len(members) == 0 {
+			WrapGinError(c, errors.New(errors.NotFound, nil, "没有群成员"))
+			return
+		}
 		if err != nil {
 			WrapGinError(c, err)
 			return

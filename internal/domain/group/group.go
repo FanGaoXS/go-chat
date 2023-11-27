@@ -8,14 +8,14 @@ import (
 	"fangaoxs.com/go-chat/internal/storage"
 )
 
-type InsertGroupInput struct {
+type CreateGroupInput struct {
 	Name      string
 	Type      entity.GroupType
 	CreatedBy string
 }
 
 type Group interface {
-	InsertGroup(ctx context.Context, input InsertGroupInput) (int64, error)
+	CreateGroup(ctx context.Context, input CreateGroupInput) (int64, error)
 	GetGroupByID(ctx context.Context, id int64) (*entity.Group, error)
 	ListGroupsByCreatedBy(ctx context.Context, createdBy string) ([]*entity.Group, error)
 	DeleteGroup(ctx context.Context, id int64) error
@@ -31,7 +31,7 @@ type group struct {
 	storage storage.Storage
 }
 
-func (g *group) InsertGroup(ctx context.Context, input InsertGroupInput) (int64, error) {
+func (g *group) CreateGroup(ctx context.Context, input CreateGroupInput) (int64, error) {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
 		return 0, err

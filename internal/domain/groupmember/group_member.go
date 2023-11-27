@@ -9,7 +9,7 @@ import (
 )
 
 type GroupMember interface {
-	AddUserToGroup(ctx context.Context, userSubject string, groupID int64) error
+	AssignUserToGroup(ctx context.Context, groupID int64, userSubject ...string) error
 	ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error)
 	ListUsersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error)
 }
@@ -24,17 +24,26 @@ type groupMember struct {
 	storage storage.Storage
 }
 
-func (g *groupMember) AddUserToGroup(ctx context.Context, userSubject string, groupID int64) error {
+func (g *groupMember) AssignUserToGroup(ctx context.Context, groupID int64, userSubject ...string) error {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
 		return err
 	}
-
-	err = g.storage.InsertGroupMember(ses, userSubject, groupID)
+	ses, err = ses.Begin()
 	if err != nil {
 		return err
 	}
 
+	for _, subject := range userSubject {
+		err = g.storage.InsertGroupMember(ses, subject, groupID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
