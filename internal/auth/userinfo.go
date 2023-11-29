@@ -8,6 +8,8 @@ type UserInfo struct {
 	Subject  string
 	Nickname string
 	Phone    string
+
+	Agent string
 }
 
 func WithContext(ctx context.Context, ui UserInfo) context.Context {
@@ -16,5 +18,8 @@ func WithContext(ctx context.Context, ui UserInfo) context.Context {
 
 func FromContext(ctx context.Context) UserInfo {
 	v := ctx.Value(KeyInCtx)
+	if v == nil {
+		return UserInfo{}
+	}
 	return v.(UserInfo)
 }

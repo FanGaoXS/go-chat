@@ -14,10 +14,11 @@ import (
 type Env struct {
 	AppName    string
 	AppVersion string
+	LogLevel   string
+	AdminName  string
 
-	LogLevel string
-
-	RestListenAddr string
+	RestListenAddr      string
+	WebsocketListenAddr string
 
 	DSN string
 
@@ -52,11 +53,25 @@ func Get() (Env, error) {
 		logLevel = os.Getenv("LOG_LEVEL")
 	}
 
+	var adminName string
+	if os.Getenv("ADMIN_NAME") == "" {
+		adminName = "admin"
+	} else {
+		adminName = os.Getenv("ADMIN_NAME")
+	}
+
 	var restListenAddr string
 	if os.Getenv("REST_LISTEN_ADDR") == "" {
 		restListenAddr = "localhost:8090"
 	} else {
 		restListenAddr = os.Getenv("REST_LISTEN_ADDR")
+	}
+
+	var websocketListenAddr string
+	if os.Getenv("WEBSOCKET_LISTEN_ADDR") == "" {
+		websocketListenAddr = "localhost:8091"
+	} else {
+		websocketListenAddr = os.Getenv("WEBSOCKET_LISTEN_ADDR")
 	}
 
 	var dsn string
@@ -77,12 +92,14 @@ func Get() (Env, error) {
 	}
 
 	return Env{
-		AppName:        appName,
-		AppVersion:     appVersion,
-		LogLevel:       logLevel,
-		RestListenAddr: restListenAddr,
-		DSN:            dsn,
-		BypassAuth:     bypassAuth,
+		AppName:             appName,
+		AppVersion:          appVersion,
+		LogLevel:            logLevel,
+		AdminName:           adminName,
+		RestListenAddr:      restListenAddr,
+		WebsocketListenAddr: websocketListenAddr,
+		DSN:                 dsn,
+		BypassAuth:          bypassAuth,
 	}, nil
 }
 

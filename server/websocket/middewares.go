@@ -1,4 +1,4 @@
-package rest
+package websocket
 
 import (
 	"fangaoxs.com/go-chat/internal/auth"
@@ -24,7 +24,7 @@ func AuthMiddleware(authorizer auth.Authorizer) gin.HandlerFunc {
 			Subject: subject,
 			Agent:   agent,
 		}
-		ctx = auth.WithRequestCtx(ctx, r)
+		ctx = auth.WithRequestCtx(ctx, r) // 将headers写入ctx，以便后续的ctx能够获取到
 		ctx, err := authorizer.Verify(ctx)
 		if err != nil {
 			WrapGinError(c, errors.Newf(errors.Unauthenticated, err, ""))

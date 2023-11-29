@@ -15,27 +15,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewHandlers(
+func newHandlers(
 	env environment.Env,
 	logger logger.Logger,
 	user user.User,
 	group group.Group,
-) (Handlers, error) {
-	return Handlers{
+) (handlers, error) {
+	return handlers{
 		logger: logger,
 		user:   user,
 		group:  group,
 	}, nil
 }
 
-type Handlers struct {
+type handlers struct {
 	logger logger.Logger
 
 	user  user.User
 	group group.Group
 }
 
-func (h *Handlers) RegisterUser() gin.HandlerFunc {
+func (h *handlers) RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
 		ctx := c.Request.Context()
@@ -75,7 +75,7 @@ func (h *Handlers) RegisterUser() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) Me() gin.HandlerFunc {
+func (h *handlers) Me() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
 		ctx := c.Request.Context()
@@ -91,7 +91,7 @@ func (h *Handlers) Me() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) MyFriends() gin.HandlerFunc {
+func (h *handlers) MyFriends() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
 		ctx := c.Request.Context()
@@ -107,7 +107,7 @@ func (h *Handlers) MyFriends() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) AssignFriends() gin.HandlerFunc {
+func (h *handlers) AssignFriends() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
@@ -127,7 +127,7 @@ func (h *Handlers) AssignFriends() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) RemoveFriends() gin.HandlerFunc {
+func (h *handlers) RemoveFriends() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
@@ -147,7 +147,7 @@ func (h *Handlers) RemoveFriends() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) MyGroups() gin.HandlerFunc {
+func (h *handlers) MyGroups() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
 		ctx := c.Request.Context()
@@ -167,7 +167,7 @@ func (h *Handlers) MyGroups() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) InsertGroup() gin.HandlerFunc {
+func (h *handlers) InsertGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
 		ctx := c.Request.Context()
@@ -197,7 +197,7 @@ func (h *Handlers) InsertGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) GetGroupByID() gin.HandlerFunc {
+func (h *handlers) GetGroupByID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
 		ctx := c.Request.Context()
@@ -223,7 +223,7 @@ func (h *Handlers) GetGroupByID() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) DeleteGroup() gin.HandlerFunc {
+func (h *handlers) DeleteGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// DELETE
 		ctx := c.Request.Context()
@@ -255,7 +255,7 @@ func (h *Handlers) DeleteGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) PrivateGroup() gin.HandlerFunc {
+func (h *handlers) PrivateGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
 		ctx := c.Request.Context()
@@ -287,7 +287,7 @@ func (h *Handlers) PrivateGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) PublicGroup() gin.HandlerFunc {
+func (h *handlers) PublicGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
 		ctx := c.Request.Context()
@@ -319,7 +319,7 @@ func (h *Handlers) PublicGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) AssignMembersToGroup() gin.HandlerFunc {
+func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
@@ -355,7 +355,7 @@ func (h *Handlers) AssignMembersToGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *Handlers) MembersOfGroup() gin.HandlerFunc {
+func (h *handlers) MembersOfGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
