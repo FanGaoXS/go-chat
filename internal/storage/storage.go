@@ -11,6 +11,7 @@ type Storage interface {
 	NewSession(ctx context.Context) (Session, error)
 
 	InsertUser(ses Session, i *entity.User) error
+	ListAllUsers(ses Session) ([]*entity.User, error)
 	GetUserBySubject(ses Session, subject string) (*entity.User, error)
 	GetUserBySecret(ses Session, username, password string) (*entity.User, error)
 	DeleteUser(ses Session, subject string) error

@@ -20,6 +20,7 @@ type User interface {
 	RegisterUser(ctx context.Context, input RegisterInput) (string, error)
 	GetUserBySubject(ctx context.Context, subject string) (*entity.User, error)
 	DeleteUser(ctx context.Context, subject string) error
+	AllUsers(ctx context.Context) ([]*entity.User, error)
 
 	AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error
 	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
@@ -84,6 +85,20 @@ func (u *user) DeleteUser(ctx context.Context, subject string) error {
 	}
 
 	return nil
+}
+
+func (u *user) AllUsers(ctx context.Context) ([]*entity.User, error) {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	users, err := u.storage.ListAllUsers(ses)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 func (u *user) AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error {

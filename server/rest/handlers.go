@@ -40,28 +40,32 @@ func (h *handlers) RegisterUser() gin.HandlerFunc {
 		// POST
 		ctx := c.Request.Context()
 
-		if c.PostForm("nickname") == "" {
+		nickname, ok := c.GetPostForm("nickname")
+		if !ok {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid nickname"))
 			return
 		}
-		if c.PostForm("username") == "" {
+		username, ok := c.GetPostForm("username")
+		if !ok {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid username"))
 			return
 		}
-		if c.PostForm("password") == "" {
+		password, ok := c.GetPostForm("password")
+		if !ok {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid password"))
 			return
 		}
-		if c.PostForm("phone") == "" {
+		phone, ok := c.GetPostForm("phone")
+		if !ok {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid phone"))
 			return
 		}
 
 		input := user.RegisterInput{
-			Nickname: c.PostForm("nickname"),
-			Username: c.PostForm("username"),
-			Password: c.PostForm("password"),
-			Phone:    c.PostForm("phone"),
+			Nickname: nickname,
+			Username: username,
+			Password: password,
+			Phone:    phone,
 		}
 		subject, err := h.user.RegisterUser(ctx, input)
 		if err != nil {
@@ -112,8 +116,8 @@ func (h *handlers) AssignFriends() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		friendSubjects := c.PostFormArray("friend_subject")
-		if len(friendSubjects) == 0 {
+		friendSubjects, ok := c.GetPostFormArray("friend_subject")
+		if !ok {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty friend subjects"))
 			return
 		}
@@ -132,8 +136,8 @@ func (h *handlers) RemoveFriends() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		friendSubjects := c.PostFormArray("friend_subject")
-		if len(friendSubjects) == 0 {
+		friendSubjects, ok := c.GetPostFormArray("friend_subject")
+		if !ok {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty friend subjects"))
 			return
 		}
@@ -173,17 +177,19 @@ func (h *handlers) InsertGroup() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		if c.PostForm("name") == "" {
+		name, ok := c.GetPostForm("name")
+		if !ok {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid name"))
 			return
 		}
+
 		groupType, ok := entity.GroupTypeFromString(c.PostForm("type"))
 		if !ok {
 			groupType = entity.DefaultGroupType
 		}
 
 		input := group.CreateGroupInput{
-			Name:      c.PostForm("name"),
+			Name:      name,
 			Type:      groupType,
 			CreatedBy: ui.Subject,
 		}
@@ -330,8 +336,8 @@ func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 			return
 		}
 
-		subjects := c.PostFormArray("user_subject")
-		if len(subjects) == 0 {
+		subjects, ok := c.GetPostFormArray("user_subject")
+		if !ok {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty user subjects"))
 			return
 		}

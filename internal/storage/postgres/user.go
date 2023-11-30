@@ -71,6 +71,15 @@ func (p *postgres) listUsers(ses storage.Session, where *entity.Where) ([]*entit
 	return res, nil
 }
 
+func (p *postgres) ListAllUsers(ses storage.Session) ([]*entity.User, error) {
+	res, err := p.listUsers(ses, nil)
+	if err != nil {
+		return nil, wrapPGErrorf(err, "list all users failed")
+	}
+
+	return res, nil
+}
+
 func (p *postgres) GetUserBySubject(ses storage.Session, subject string) (*entity.User, error) {
 	w := &entity.Where{
 		FieldNames:  []string{"subject"},
