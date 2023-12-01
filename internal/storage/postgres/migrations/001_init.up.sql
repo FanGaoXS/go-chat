@@ -41,3 +41,30 @@ CREATE TABLE IF NOT EXISTS "group_member"
     CONSTRAINT group_member_user_fk FOREIGN KEY (user_subject) REFERENCES "user" (subject),
     CONSTRAINT group_member_group_fk FOREIGN KEY (group_id) REFERENCES "group" (id)
 );
+
+CREATE TABLE IF NOT EXISTS "broadcast_record"
+(
+    id         serial       NOT NULL primary key,
+    content    varchar(256) NOT NULL,
+    created_by varchar(256) NOT NULL,
+    created_at timestamp    NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "group_record"
+(
+    id         serial       NOT NULL primary key,
+    content    varchar(256) NOT NULL,
+    group_id   bigint       NOT NULL,
+    created_by varchar(256) NOT NULL,
+    created_at timestamp    NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "private_record"
+(
+    id         varchar(256) NOT NULL primary key,
+    hash_id    varchar(256) NOT NULL,
+    content    varchar(256) NOT NULL,
+    sender     varchar(256) NOT NULL,
+    receiver   varchar(256) NOT NULL,
+    created_at timestamp    NULL DEFAULT now()
+);

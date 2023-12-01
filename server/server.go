@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"

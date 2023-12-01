@@ -7,6 +7,8 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/hub"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
@@ -20,13 +22,14 @@ func New(
 	authorizer auth.Authorizer,
 	user user.User,
 	group group.Group,
+	record record.Record,
 ) (*Server, error) {
-	hub, err := NewHub(env, logger)
+	hb, err := hub.NewHub(env, logger, record)
 	if err != nil {
-		return nil, fmt.Errorf("create websocket hub failed: %w", err)
+		return nil, fmt.Errorf("create hub failed: %w", err)
 	}
 
-	hdls, err := newHandlers(env, logger, user, group, hub)
+	hdls, err := newHandlers(env, logger, user, group, hb, record)
 	if err != nil {
 		return nil, fmt.Errorf("create websocket handlers failed: %w", err)
 	}
@@ -45,13 +48,13 @@ func New(
 	}
 	return &Server{
 		server: s,
-		hub:    hub,
+		hub:    hb,
 	}, nil
 }
 
 type Server struct {
 	server *http.Server
-	hub    *Hub
+	hub    hub.Hub
 }
 
 func (s *Server) ListenAndServe() error {

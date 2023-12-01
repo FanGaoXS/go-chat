@@ -41,11 +41,6 @@ func (g GroupType) String() string {
 	return groupTypeString[g]
 }
 
-func GroupTypeFromString(s string) (GroupType, bool) {
-	v, ok := groupTypeID[s]
-	return v, ok
-}
-
 func (g GroupType) Value() (driver.Value, error) {
 	return groupTypeString[g], nil
 }
@@ -53,6 +48,11 @@ func (g GroupType) Value() (driver.Value, error) {
 func (g *GroupType) Scan(value interface{}) error {
 	*g = groupTypeID[value.(string)]
 	return nil
+}
+
+func GroupTypeFromString(s string) (GroupType, bool) {
+	v, ok := groupTypeID[s]
+	return v, ok
 }
 
 type GroupMember struct {

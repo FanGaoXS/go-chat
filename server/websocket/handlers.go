@@ -10,6 +10,8 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/hub"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/infras/logger"
@@ -18,21 +20,23 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func newHandlers(env environment.Env, logger logger.Logger, user user.User, group group.Group, hub *Hub) (handlers, error) {
+func newHandlers(env environment.Env, logger logger.Logger, user user.User, group group.Group, hub hub.Hub, record record.Record) (handlers, error) {
 	return handlers{
 		logger: logger,
-		hub:    hub,
 		user:   user,
 		group:  group,
+		hub:    hub,
+		record: record,
 	}, nil
 }
 
 type handlers struct {
 	logger logger.Logger
-	hub    *Hub
 
-	user  user.User
-	group group.Group
+	user   user.User
+	group  group.Group
+	hub    hub.Hub
+	record record.Record
 }
 
 func (h *handlers) Shack() gin.HandlerFunc {
@@ -57,7 +61,7 @@ func (h *handlers) Shack() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		h.hub.RegisterClient(subject, conn)
+		h.hub.RegisterClient(ctx, subject, conn)
 		h.logger.Infof("%s login", u.Nickname)
 		for {
 			_, message, err := conn.ReadMessage()
@@ -65,18 +69,18 @@ func (h *handlers) Shack() gin.HandlerFunc {
 				break
 			}
 
-			var m Message
+			var m hub.Message
 			if err = json.Unmarshal(message, &m); err != nil {
 				conn.WriteJSON(map[string]any{"error": err.Error()})
 			}
 
 			switch m.Type {
-			case MessageTypeBroadcast:
+			case hub.MessageTypeBroadcast:
 				if err = h.SendBroadcastMessage(ctx, subject, m.Content); err != nil {
 					h.logger.Errorf("%s send broadcast message failed: %w", subject, err)
 					conn.WriteJSON(map[string]any{"error": err.Error()})
 				}
-			case MessageTypeGroup:
+			case hub.MessageTypeGroup:
 				groupID, err := strconv.ParseInt(m.Metadata, 10, 64)
 				if err != nil {
 					conn.WriteJSON(map[string]any{"error": err.Error()})
@@ -85,7 +89,7 @@ func (h *handlers) Shack() gin.HandlerFunc {
 					h.logger.Errorf("%s send group message to %d failed: %w", subject, m.Metadata, err)
 					conn.WriteJSON(map[string]any{"error": err.Error()})
 				}
-			case MessageTypePrivate:
+			case hub.MessageTypePrivate:
 				if err := h.SendPrivateMessage(ctx, subject, m.Content, m.To); err != nil {
 					h.logger.Errorf("%s send private message to %d failed: %w", subject, m.To, err)
 					conn.WriteJSON(map[string]any{"error": err.Error()})
@@ -94,7 +98,7 @@ func (h *handlers) Shack() gin.HandlerFunc {
 				conn.WriteJSON(map[string]any{"error": "invalid message type"})
 			}
 		}
-		h.hub.UnregisterClient(subject)
+		h.hub.UnregisterClient(ctx, subject)
 		h.logger.Infof("%s logout", u.Nickname)
 	}
 }
@@ -176,14 +180,13 @@ func (h *handlers) SendBroadcastMessage(ctx context.Context, sender, content str
 	}
 
 	for _, u := range users {
-		m := Message{
-			Type:      MessageTypeBroadcast,
-			From:      sender,
-			To:        u.Subject,
-			Content:   content,
-			CreatedAt: time.Now(),
+		m := hub.Message{
+			Type:    hub.MessageTypeBroadcast,
+			From:    sender,
+			To:      u.Subject,
+			Content: content,
 		}
-		if err = h.hub.SendMessage(m); err != nil {
+		if err = h.hub.SendMessage(ctx, m); err != nil {
 			// TODO: add to message queue
 		}
 	}
@@ -198,15 +201,15 @@ func (h *handlers) SendGroupMessage(ctx context.Context, sender, content string,
 	}
 
 	for _, u := range members {
-		m := Message{
-			Type:      MessageTypeGroup,
+		m := hub.Message{
+			Type:      hub.MessageType,
 			Metadata:  strconv.FormatInt(groupID, 10),
 			From:      sender,
 			To:        u.Subject,
 			Content:   content,
 			CreatedAt: time.Now(),
 		}
-		if err = h.hub.SendMessage(m); err != nil {
+		if err = h.hub.SendMessage(ctx, m); err != nil {
 			// TODO: add to message queue
 		}
 	}
@@ -219,30 +222,28 @@ func (h *handlers) SendPrivateMessage(ctx context.Context, sender, content, to s
 		return err // check whether the user exists
 	}
 
-	m := Message{
-		Type:      MessageTypePrivate,
+	m := hub.Message{
+		Type:      hub.MessageTypePrivate,
 		From:      sender,
 		To:        to,
 		Content:   content,
 		CreatedAt: time.Now(),
 	}
-	if err := h.hub.SendMessage(m); err != nil {
+	if err := h.hub.SendMessage(ctx, m); err != nil {
 		// TODO: add to message queue
 	}
 
 	return nil
 }
 
-var (
-	// update http to websocket
-	upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-		Error: func(w http.ResponseWriter, r *http.Request, status int, reason error) {
-			// don't return errors to maintain backwards compatibility
-		},
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
-)
+// update http to websocket
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	Error: func(w http.ResponseWriter, r *http.Request, status int, reason error) {
+		// don't return errors to maintain backwards compatibility
+	},
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
