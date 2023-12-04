@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fangaoxs.com/go-chat/internal/domain/hub"
 	"net/http"
 	"strconv"
 
@@ -20,11 +21,13 @@ func newHandlers(
 	logger logger.Logger,
 	user user.User,
 	group group.Group,
+	hub hub.Hub,
 ) (handlers, error) {
 	return handlers{
 		logger: logger,
 		user:   user,
 		group:  group,
+		hub:    hub,
 	}, nil
 }
 
@@ -33,6 +36,7 @@ type handlers struct {
 
 	user  user.User
 	group group.Group
+	hub   hub.Hub
 }
 
 func (h *handlers) RegisterUser() gin.HandlerFunc {
@@ -150,6 +154,8 @@ func (h *handlers) RemoveFriends() gin.HandlerFunc {
 		c.Status(http.StatusOK)
 	}
 }
+
+// group
 
 func (h *handlers) MyGroups() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -398,5 +404,77 @@ func (h *handlers) MembersOfGroup() gin.HandlerFunc {
 
 		WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你无法查看该群组成员"))
 		return
+	}
+}
+
+// record
+
+func (h *handlers) BroadcastMessage() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// POST
+		message, ok := c.GetPostForm("message")
+		if !ok {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty message"))
+			return
+		}
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		err := h.hub.SendBroadcastMessage(ctx, ui.Subject, message)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+	}
+}
+
+func (h *handlers) GroupMessage() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// POST
+		message, ok := c.GetPostForm("message")
+		if !ok {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty message"))
+			return
+		}
+		groupID, err := strconv.ParseInt(c.Param("group_id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		err = h.hub.SendGroupMessage(ctx, ui.Subject, message, groupID)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+	}
+}
+
+func (h *handlers) PrivateMessage() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// POST
+		message, ok := c.GetPostForm("message")
+		if !ok {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty message"))
+			return
+		}
+		receiver, ok := c.GetPostForm("receiver")
+		if !ok {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty to"))
+			return
+		}
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		err := h.hub.SendPrivateMessage(ctx, ui.Subject, message, receiver)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
 	}
 }

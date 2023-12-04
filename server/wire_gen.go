@@ -10,6 +10,7 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/internal/storage/postgres"
@@ -35,7 +36,11 @@ func initServer(env environment.Env, logger2 logger.Logger, httpServer *gin.Engi
 	if err != nil {
 		return nil, err
 	}
-	server, err := newServer(env, logger2, httpServer, authorizer, userUser, groupGroup)
+	recordRecord, err := record.New(env, logger2, storage)
+	if err != nil {
+		return nil, err
+	}
+	server, err := newServer(env, logger2, httpServer, authorizer, userUser, groupGroup, recordRecord)
 	if err != nil {
 		return nil, err
 	}

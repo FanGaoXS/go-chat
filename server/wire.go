@@ -7,6 +7,7 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/internal/storage/postgres"
@@ -20,6 +21,7 @@ func initServer(env environment.Env, logger logger.Logger, httpServer *gin.Engin
 		postgres.New,
 		user.New,
 		group.New,
+		record.New,
 		auth.NewAuthorizer,
 		newServer,
 	))

@@ -2,6 +2,7 @@ package group
 
 import (
 	"context"
+	"fangaoxs.com/go-chat/internal/infras/errors"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
@@ -172,12 +173,16 @@ func (g *group) ListGroupsOfUser(ctx context.Context, userSubject string) ([]*en
 
 	groups := make([]*entity.Group, 0, len(gms))
 	for _, gm := range gms {
-		group, err := g.storage.GetGroupByID(ses, gm.GroupID)
+		grp, err := g.storage.GetGroupByID(ses, gm.GroupID)
 		if err != nil {
 			return nil, err
 		}
 
-		groups = append(groups, group)
+		groups = append(groups, grp)
+	}
+
+	if len(groups) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty groups of user: %s", userSubject)
 	}
 
 	return groups, nil
@@ -194,15 +199,19 @@ func (g *group) ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entit
 		return nil, err
 	}
 
-	users := make([]*entity.User, 0, len(gms))
+	members := make([]*entity.User, 0, len(gms))
 	for _, gm := range gms {
 		user, err := g.storage.GetUserBySubject(ses, gm.UserSubject)
 		if err != nil {
 			return nil, err
 		}
 
-		users = append(users, user)
+		members = append(members, user)
 	}
 
-	return users, nil
+	if len(members) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty members of group: %d", groupID)
+	}
+
+	return members, nil
 }

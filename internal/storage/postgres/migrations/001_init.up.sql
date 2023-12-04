@@ -42,27 +42,27 @@ CREATE TABLE IF NOT EXISTS "group_member"
     CONSTRAINT group_member_group_fk FOREIGN KEY (group_id) REFERENCES "group" (id)
 );
 
-CREATE TABLE IF NOT EXISTS "broadcast_record"
+CREATE TABLE IF NOT EXISTS "record_broadcast"
 (
     id         serial       NOT NULL primary key,
     content    varchar(256) NOT NULL,
-    created_by varchar(256) NOT NULL,
+    sender     varchar(256) NOT NULL,
     created_at timestamp    NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "group_record"
+CREATE TABLE IF NOT EXISTS "record_group"
 (
     id         serial       NOT NULL primary key,
-    content    varchar(256) NOT NULL,
     group_id   bigint       NOT NULL,
-    created_by varchar(256) NOT NULL,
+    content    varchar(256) NOT NULL,
+    sender     varchar(256) NOT NULL,
     created_at timestamp    NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "private_record"
+CREATE TABLE IF NOT EXISTS "record_private"
 (
-    id         varchar(256) NOT NULL primary key,
-    hash_id    varchar(256) NOT NULL,
+    id         serial       NOT NULL primary key,
+    unique_id  bigint       NOT NULL,
     content    varchar(256) NOT NULL,
     sender     varchar(256) NOT NULL,
     receiver   varchar(256) NOT NULL,

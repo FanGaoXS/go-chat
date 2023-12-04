@@ -31,9 +31,13 @@ type Storage interface {
 	ListGroupMembersByGroupID(ses Session, groupID int64) ([]*entity.GroupMember, error)
 	ListGroupMembersByUserSubject(ses Session, userSubject string) ([]*entity.GroupMember, error)
 
-	InsertRecord(ses Session, record *entity.Record) error
-	DeleteRecords(ses Session, seqID string) error
-	ListBroadcastRecords(ses Session, subject string) ([]*entity.Record, error)
-	ListGroupRecords(ses Session, groupID int64, subject string) ([]*entity.Record, error)
-	ListPrivateRecords(ses Session, sender, receiver string) ([]*entity.Record, error)
+	InsertRecordBroadcast(ses Session, i *entity.RecordBroadcast) (int64, error)
+	ListAllRecordBroadcasts(ses Session) ([]*entity.RecordBroadcast, error)
+	ListRecordBroadcastsBySender(ses Session, sender string) ([]*entity.RecordBroadcast, error)
+
+	InsertRecordGroup(ses Session, i *entity.RecordGroup) (int64, error)
+	ListRecordGroupsByGroup(ses Session, groupID int64) ([]*entity.RecordGroup, error)
+
+	InsertRecordPrivate(ses Session, i *entity.RecordPrivate) (int64, error)
+	ListRecordPrivatesByParty(ses Session, subject1, subject2 string) ([]*entity.RecordPrivate, error)
 }

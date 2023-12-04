@@ -1,6 +1,8 @@
 package postgres
 
 import (
+	"hash/fnv"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -20,4 +22,14 @@ func rebind(query string) string {
 	}
 
 	return sb.String()
+}
+
+func hashCode(str string) int64 {
+	hash := fnv.New64()
+	hash.Write([]byte(str))
+	hc := hash.Sum64()
+	if hc > math.MaxInt64 {
+		return int64(hc - math.MaxUint64 - 1)
+	}
+	return int64(hc)
 }

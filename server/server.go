@@ -5,6 +5,8 @@ import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/hub"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/server/rest"
@@ -34,13 +36,19 @@ func newServer(
 	authorizer auth.Authorizer,
 	user user.User,
 	group group.Group,
+	record record.Record,
 ) (*Server, error) {
-	restServer, err := rest.New(env, logger, httpServer, authorizer, user, group)
+	hb, err := hub.NewHub(env, logger, record, group)
 	if err != nil {
 		return nil, err
 	}
 
-	wsServer, err := websocket.New(env, logger, httpServer, authorizer, user, group)
+	restServer, err := rest.New(env, logger, httpServer, authorizer, user, group, hb)
+	if err != nil {
+		return nil, err
+	}
+
+	wsServer, err := websocket.New(env, logger, httpServer, user, hb)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +58,7 @@ func newServer(
 		logger:     logger,
 		restServer: restServer,
 		wsServer:   wsServer,
+		hub:        hb,
 	}, nil
 }
 
@@ -59,6 +68,8 @@ type Server struct {
 
 	restServer *rest.Server
 	wsServer   *websocket.Server
+
+	hub hub.Hub
 }
 
 func (s *Server) Run(ctx context.Context) error {
@@ -96,5 +107,6 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) Close() error {
 	s.restServer.Close()
 	s.wsServer.Close()
+	s.hub.Close()
 	return nil
 }

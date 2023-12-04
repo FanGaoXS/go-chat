@@ -2,8 +2,7 @@ package record
 
 import (
 	"context"
-	"fmt"
-
+	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/infras/logger"
@@ -11,75 +10,161 @@ import (
 )
 
 type Record interface {
-	ListBroadcastRecords(ctx context.Context) ([]*entity.Record, error)
-	ListGroupRecords(ctx context.Context, groupID int64) ([]*entity.Record, error)
-	ListPrivateRecord(ctx context.Context, sender, receiver string) ([]*entity.Record, error)
+	InsertRecordBroadcast(ctx context.Context, sender, content string) error
+	InsertRecordGroup(ctx context.Context, sender, content string, groupID int64) error
+	InsertRecordPrivate(ctx context.Context, sender, content, receiver string) error
+
+	ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordBroadcast, error)
+	ListRecordBroadcastsBySender(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error)
+	ListRecordGroups(ctx context.Context, groupID int64) ([]*entity.RecordGroup, error)
+	ListRecordPrivate(ctx context.Context, sender, receiver string) ([]*entity.RecordPrivate, error)
 }
 
-func New(storage storage.Storage, logger logger.Logger) (Record, error) {
+func New(env environment.Env, logger logger.Logger, storage storage.Storage) (Record, error) {
 	return &record{
-		storage: storage,
 		logger:  logger,
+		storage: storage,
 	}, nil
 }
 
 type record struct {
+	logger logger.Logger
+
 	storage storage.Storage
-	logger  logger.Logger
 }
 
-func (r *record) InsertRecord(ctx context.Context, record *entity.Record) {
+func (r *record) InsertRecordBroadcast(ctx context.Context, sender, content string) error {
+	ses, err := r.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
 
+	rcd := &entity.RecordBroadcast{
+		Content: content,
+		Sender:  sender,
+	}
+	_, err = r.storage.InsertRecordBroadcast(ses, rcd)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *record) ListBroadcastRecords(ctx context.Context) ([]*entity.Record, error) {
+func (r *record) InsertRecordGroup(ctx context.Context, sender, content string, groupID int64) error {
+	ses, err := r.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+
+	// 检查sender是否在group中
+	_, err = r.storage.GetGroupMember(ses, sender, groupID)
+	if err != nil {
+		return err
+	}
+
+	rcd := &entity.RecordGroup{
+		GroupID: groupID,
+		Content: content,
+		Sender:  sender,
+	}
+	_, err = r.storage.InsertRecordGroup(ses, rcd)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *record) InsertRecordPrivate(ctx context.Context, sender, content, receiver string) error {
+	ses, err := r.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+
+	// 检查receiver是否存在
+	_, err = r.storage.GetUserBySubject(ses, receiver)
+	if err != nil {
+		return err
+	}
+
+	rcd := &entity.RecordPrivate{
+		Content:  content,
+		Sender:   sender,
+		Receiver: receiver,
+	}
+	_, err = r.storage.InsertRecordPrivate(ses, rcd)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *record) ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordBroadcast, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	records, err := r.storage.ListBroadcastRecords(ses)
+	res, err := r.storage.ListAllRecordBroadcasts(ses)
 	if err != nil {
 		return nil, err
 	}
-	if len(records) == 0 {
-		return nil, errors.Newf(errors.NotFound, nil, "no broadcast records found")
+	if len(res) == 0 {
+		return nil, errors.New(errors.NotFound, nil, "empty record_broadcast")
 	}
 
-	return records, nil
+	return res, nil
 }
 
-func (r *record) ListGroupRecords(ctx context.Context, groupID int64) ([]*entity.Record, error) {
+func (r *record) ListRecordBroadcastsBySender(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	metadata := fmt.Sprintf("group_id:%d", groupID)
-	records, err := r.storage.ListGroupRecords(ses, metadata)
+	res, err := r.storage.ListRecordBroadcastsBySender(ses, sender)
 	if err != nil {
 		return nil, err
 	}
-	if len(records) == 0 {
-		return nil, errors.Newf(errors.NotFound, nil, "no broadcast records found")
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty record_broadcast with sender: %s", sender)
 	}
 
-	return records, nil
+	return res, nil
 }
 
-func (r *record) ListPrivateRecord(ctx context.Context, sender, receiver string) ([]*entity.Record, error) {
+func (r *record) ListRecordGroups(ctx context.Context, groupID int64) ([]*entity.RecordGroup, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	records, err := r.storage.ListPrivateRecords(ses, sender, receiver)
+	res, err := r.storage.ListRecordGroupsByGroup(ses, groupID)
 	if err != nil {
 		return nil, err
 	}
-	if len(records) == 0 {
-		return nil, errors.Newf(errors.NotFound, nil, "no broadcast records found")
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty record_group with group: %d", groupID)
 	}
 
-	return records, nil
+	return res, nil
+}
+
+func (r *record) ListRecordPrivate(ctx context.Context, subject1, subject2 string) ([]*entity.RecordPrivate, error) {
+	ses, err := r.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := r.storage.ListRecordPrivatesByParty(ses, subject1, subject2)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty record_private with subject1: %s and subject2: %s", subject1, subject2)
+	}
+
+	return res, nil
 }
