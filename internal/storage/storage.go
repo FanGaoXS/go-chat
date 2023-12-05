@@ -17,6 +17,7 @@ type Storage interface {
 	DeleteUser(ses Session, subject string) error
 
 	InsertUserFriend(ses Session, i *entity.UserFriend) error
+	IsFriendOfUser(ses Session, userSubject, friendSubject string) (bool, error)
 	ListUserFriendsByUserSubject(ses Session, userSubject string) ([]*entity.UserFriend, error)
 	DeleteUserFriend(ses Session, userSubject, friendSubject string) error
 
@@ -27,6 +28,8 @@ type Storage interface {
 	UpdateGroupIsPublic(ses Session, id int64, isPublic bool) error
 
 	InsertGroupMember(ses Session, userSubject string, groupID int64) error
+	DeleteGroupMember(ses Session, userSubject string, groupID int64) error
+	IsMemberOfGroup(ses Session, userSubject string, groupID int64) (bool, error)
 	GetGroupMember(ses Session, userSubject string, groupID int64) (*entity.GroupMember, error)
 	ListGroupMembersByGroupID(ses Session, groupID int64) ([]*entity.GroupMember, error)
 	ListGroupMembersByUserSubject(ses Session, userSubject string) ([]*entity.GroupMember, error)

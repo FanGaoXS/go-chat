@@ -108,6 +108,10 @@ func (h *hub) SendGroupMessage(ctx context.Context, sender, content string, grou
 	}
 
 	for _, member := range members {
+		if member.Subject == sender {
+			// 不发送给自己
+			continue
+		}
 		c, ok := h.clients[member.Subject]
 		if !ok {
 			// 群成员不在线

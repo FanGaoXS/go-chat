@@ -8,6 +8,7 @@ import (
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
@@ -22,8 +23,9 @@ func New(
 	user user.User,
 	group group.Group,
 	hub hub.Hub,
+	record record.Record,
 ) (*Server, error) {
-	hdls, err := newHandlers(env, logger, user, group, hub)
+	hdls, err := newHandlers(env, logger, user, group, hub, record)
 	if err != nil {
 		return nil, fmt.Errorf("create rest handlers failed: %w", err)
 	}
@@ -54,9 +56,9 @@ func New(
 		r.POST("broadcast", hdls.BroadcastMessage())
 		r.POST("group/:group_id", hdls.GroupMessage())
 		r.POST("private", hdls.PrivateMessage())
-		r.GET("broadcast")
-		r.GET("group/:group_id")
-		r.GET("private")
+		r.GET("broadcast", hdls.RecordBroadcast())
+		r.GET("group/:group_id", hdls.RecordGroup())
+		r.GET("private/:receiver", hdls.RecordPrivate())
 	}
 
 	s := &http.Server{

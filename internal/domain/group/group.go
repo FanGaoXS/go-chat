@@ -24,8 +24,10 @@ type Group interface {
 	PublicGroup(ctx context.Context, id int64) error
 
 	AssignMembersToGroup(ctx context.Context, groupID int64, userSubject ...string) error
+	RemoveMembersFromGroup(ctx context.Context, groupID int64, userSubject ...string) error
 	ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error)
 	ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error)
+	IsMemberOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error)
 }
 
 func New(env environment.Env, storage storage.Storage) (Group, error) {
@@ -160,6 +162,29 @@ func (g *group) AssignMembersToGroup(ctx context.Context, groupID int64, userSub
 	return nil
 }
 
+func (g *group) RemoveMembersFromGroup(ctx context.Context, groupID int64, userSubject ...string) error {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, subject := range userSubject {
+		err = g.storage.DeleteGroupMember(ses, subject, groupID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (g *group) ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error) {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
@@ -214,4 +239,18 @@ func (g *group) ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entit
 	}
 
 	return members, nil
+}
+
+func (g *group) IsMemberOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error) {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	ok, err := g.storage.IsMemberOfGroup(ses, memberSubject, groupID)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
 }

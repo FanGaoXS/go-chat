@@ -1,13 +1,14 @@
 package rest
 
 import (
-	"fangaoxs.com/go-chat/internal/domain/hub"
 	"net/http"
 	"strconv"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/hub"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
@@ -22,21 +23,24 @@ func newHandlers(
 	user user.User,
 	group group.Group,
 	hub hub.Hub,
+	record record.Record,
 ) (handlers, error) {
 	return handlers{
 		logger: logger,
 		user:   user,
 		group:  group,
 		hub:    hub,
+		record: record,
 	}, nil
 }
 
 type handlers struct {
 	logger logger.Logger
 
-	user  user.User
-	group group.Group
-	hub   hub.Hub
+	user   user.User
+	group  group.Group
+	hub    hub.Hub
+	record record.Record
 }
 
 func (h *handlers) RegisterUser() gin.HandlerFunc {
@@ -333,6 +337,7 @@ func (h *handlers) PublicGroup() gin.HandlerFunc {
 
 func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// PUT
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -369,6 +374,7 @@ func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 
 func (h *handlers) MembersOfGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// GEt
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -476,5 +482,80 @@ func (h *handlers) PrivateMessage() gin.HandlerFunc {
 			WrapGinError(c, err)
 			return
 		}
+	}
+}
+
+func (h *handlers) RecordBroadcast() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		sender := c.Query("sender") // sender如果为空则查询所有
+
+		ctx := c.Request.Context()
+		res, err := h.record.ListRecordBroadcasts(ctx, sender)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+func (h *handlers) RecordGroup() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		groupID, err := strconv.ParseInt(c.Param("group_id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, errors.New(errors.InvalidArgument, err, "invalid group_id"))
+			return
+		}
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		ok, err := h.group.IsMemberOfGroup(ctx, groupID, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if !ok {
+			WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你无法查看该群组"))
+			return
+		}
+
+		res, err := h.record.ListRecordGroups(ctx, groupID)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+func (h *handlers) RecordPrivate() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		receiver := c.Param("receiver")
+		ok, err := h.user.IsFriendOfUser(ctx, ui.Subject, receiver)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if !ok {
+			WrapGinError(c, errors.Newf(errors.PermissionDenied, nil, "[%s]不是[%s]的朋友", receiver, ui.Subject))
+			return
+		}
+
+		res, err := h.record.ListRecordPrivate(ctx, ui.Subject, receiver)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }

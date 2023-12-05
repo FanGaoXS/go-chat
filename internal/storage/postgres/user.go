@@ -144,7 +144,7 @@ func (p *postgres) listUserFriends(ses storage.Session, where *entity.Where) ([]
 	projection := []string{
 		"user_subject",
 		"friend_subject",
-		"added_at",
+		"created_at",
 	}
 
 	var args []any
@@ -168,13 +168,29 @@ func (p *postgres) listUserFriends(ses storage.Session, where *entity.Where) ([]
 	var res []*entity.UserFriend
 	for rows.Next() {
 		r := entity.UserFriend{}
-		if err = rows.Scan(&r.UserSubject, &r.FriendSubject, &r.AddedAt); err != nil {
+		if err = rows.Scan(&r.UserSubject, &r.FriendSubject, &r.CreatedAt); err != nil {
 			return nil, wrapPGErrorf(err, "failed to scan user friend")
 		}
 		res = append(res, &r)
 	}
 
 	return res, nil
+}
+
+func (p *postgres) IsFriendOfUser(ses storage.Session, userSubject, friendSubject string) (bool, error) {
+	w := &entity.Where{
+		FieldNames:  []string{"user_subject", "friend_subject"},
+		FieldValues: []any{userSubject, friendSubject},
+	}
+	res, err := p.listUserFriends(ses, w)
+	if err != nil {
+		return false, wrapPGErrorf(err, "is friend: %s of user: %s failed", friendSubject, userSubject)
+	}
+	if len(res) == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (p *postgres) ListUserFriendsByUserSubject(ses storage.Session, userSubject string) ([]*entity.UserFriend, error) {

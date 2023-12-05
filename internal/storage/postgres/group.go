@@ -146,6 +146,16 @@ func (p *postgres) InsertGroupMember(ses storage.Session, userSubject string, gr
 	return nil
 }
 
+func (p *postgres) DeleteGroupMember(ses storage.Session, userSubject string, groupID int64) error {
+	sqlstr := rebind(`DELETE FROM "group_member" WHERE user_subject = ? AND group_id = ?;`)
+	_, err := ses.Exec(sqlstr, userSubject, groupID)
+	if err != nil {
+		return wrapPGErrorf(err, "delete group member with user_subject: %s and group_id: %d failed", userSubject, groupID)
+	}
+
+	return nil
+}
+
 func (p *postgres) listGroupMembers(ses storage.Session, where *entity.Where) ([]*entity.GroupMember, error) {
 	projection := []string{
 		"user_subject",
@@ -180,6 +190,23 @@ func (p *postgres) listGroupMembers(ses storage.Session, where *entity.Where) ([
 	}
 
 	return res, nil
+}
+
+func (p *postgres) IsMemberOfGroup(ses storage.Session, userSubject string, groupID int64) (bool, error) {
+	w := &entity.Where{
+		FieldNames:  []string{"user_subject", "group_id"},
+		FieldValues: []any{userSubject, groupID},
+	}
+
+	res, err := p.listGroupMembers(ses, w)
+	if err != nil {
+		return false, wrapPGErrorf(err, "is member of group with user_subject: %s and group_id: %d failed", userSubject, groupID)
+	}
+	if len(res) == 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (p *postgres) GetGroupMember(ses storage.Session, userSubject string, groupID int64) (*entity.GroupMember, error) {

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/domain/group"
@@ -43,7 +44,7 @@ func newServer(
 		return nil, err
 	}
 
-	restServer, err := rest.New(env, logger, httpServer, authorizer, user, group, hb)
+	restServer, err := rest.New(env, logger, httpServer, authorizer, user, group, hb, record)
 	if err != nil {
 		return nil, err
 	}

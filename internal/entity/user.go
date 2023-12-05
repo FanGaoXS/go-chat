@@ -16,5 +16,5 @@ type UserFriend struct {
 	UserSubject   string `json:"user_subject"`
 	FriendSubject string `json:"friend_subject"`
 
-	AddedAt time.Time `json:"added_at"`
+	CreatedAt time.Time `json:"created_at"`
 }

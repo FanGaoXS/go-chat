@@ -25,6 +25,7 @@ type User interface {
 	AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error
 	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
 	RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error
+	IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error)
 }
 
 func New(env environment.Env, storage storage.Storage) (User, error) {
@@ -123,6 +124,16 @@ func (u *user) AssignFriendsToUser(ctx context.Context, userSubject string, frie
 		if err = u.storage.InsertUserFriend(ses, uf); err != nil {
 			return err
 		}
+
+		// TODO: 双向好友，好友申请
+
+		uf = &entity.UserFriend{
+			UserSubject:   fs,
+			FriendSubject: userSubject,
+		}
+		if err = u.storage.InsertUserFriend(ses, uf); err != nil {
+			return err
+		}
 	}
 
 	if err = ses.Commit(); err != nil {
@@ -171,10 +182,27 @@ func (u *user) RemoveFriendsFromUser(ctx context.Context, userSubject string, fr
 		if err = u.storage.DeleteUserFriend(ses, userSubject, fs); err != nil {
 			return err
 		}
+		if err = u.storage.DeleteUserFriend(ses, fs, userSubject); err != nil {
+			return err
+		}
 	}
 
 	if err = ses.Commit(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (u *user) IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error) {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	ok, err := u.storage.IsFriendOfUser(ses, userSubject, friendSubject)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
 }

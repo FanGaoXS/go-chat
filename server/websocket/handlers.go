@@ -2,13 +2,14 @@ package websocket
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/domain/hub"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/infras/logger"
-	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -52,16 +53,24 @@ func (h *handlers) Shack() gin.HandlerFunc {
 		defer conn.Close()
 
 		h.hub.RegisterClient(ctx, subject, conn)
-		h.logger.Infof("%s login", u.Nickname)
+		h.logger.Infof("[%s] login", u.Nickname)
+		conn.WriteJSON(KV{"content": "Welcome! " + u.Nickname})
 		for {
-			_, message, err := conn.ReadMessage()
+			messageType, message, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
 
+			// 心跳检测
+			if messageType == websocket.PingMessage || string(message) == "PING" || string(message) == "ping" {
+				conn.WriteMessage(websocket.TextMessage, []byte("PONG"))
+				continue
+			}
+
 			var m map[string]string
 			if err = json.Unmarshal(message, &m); err != nil {
-				conn.WriteJSON(map[string]any{"error": err.Error()})
+				conn.WriteJSON(KV{"error": err.Error()})
+				continue
 			}
 
 			switch m["type"] {
@@ -69,19 +78,19 @@ func (h *handlers) Shack() gin.HandlerFunc {
 				content := m["content"]
 				if err = h.hub.SendBroadcastMessage(ctx, subject, content); err != nil {
 					h.logger.Errorf("%s send broadcast message failed: %w", subject, err)
-					conn.WriteJSON(map[string]any{"error": err.Error()})
+					conn.WriteJSON(KV{"error": err.Error()})
 					break
 				}
 			case "group":
 				groupID, err := strconv.ParseInt(m["group_id"], 10, 64)
 				if err != nil {
-					conn.WriteJSON(map[string]any{"error": err.Error()})
+					conn.WriteJSON(KV{"error": err.Error()})
 					break
 				}
 				content := m["content"]
 				if err := h.hub.SendGroupMessage(ctx, subject, content, groupID); err != nil {
 					h.logger.Errorf("%s send group message to %d failed: %w", subject, groupID, err)
-					conn.WriteJSON(map[string]any{"error": err.Error()})
+					conn.WriteJSON(KV{"error": err.Error()})
 					break
 				}
 			case "private":
@@ -89,15 +98,15 @@ func (h *handlers) Shack() gin.HandlerFunc {
 				receiver := m["receiver"]
 				if err := h.hub.SendPrivateMessage(ctx, subject, content, receiver); err != nil {
 					h.logger.Errorf("%s send private message to %d failed: %w", subject, receiver, err)
-					conn.WriteJSON(map[string]any{"error": err.Error()})
+					conn.WriteJSON(KV{"error": err.Error()})
 					break
 				}
 			default:
-				conn.WriteJSON(map[string]any{"error": "invalid message type"})
+				conn.WriteJSON(KV{"error": "invalid message type"})
 			}
 		}
 		h.hub.UnregisterClient(ctx, subject)
-		h.logger.Infof("%s logout", u.Nickname)
+		h.logger.Infof("[%s] logout", u.Nickname)
 	}
 }
 
@@ -112,3 +121,5 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+
+type KV map[string]any
