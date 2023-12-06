@@ -2,12 +2,13 @@ package hub
 
 import (
 	"context"
-	"fangaoxs.com/go-chat/internal/domain/group"
-	"fangaoxs.com/go-chat/internal/domain/record"
 	"time"
 
 	"fangaoxs.com/go-chat/environment"
+	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/infras/logger"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -44,6 +45,7 @@ type hub struct {
 
 func (h *hub) Close() error {
 	for _, c := range h.clients {
+		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "服务器关闭"))
 		c.conn.Close()
 	}
 
@@ -51,25 +53,27 @@ func (h *hub) Close() error {
 }
 
 func (h *hub) RegisterClient(ctx context.Context, subject string, conn *websocket.Conn) error {
-	client, ok := h.clients[subject]
+	c, ok := h.clients[subject]
 	if ok {
-		client.conn.Close()
+		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "你被强制下线"))
+		c.conn.Close()
 		delete(h.clients, subject)
 	}
 
-	client = &Client{
+	c = &Client{
 		conn:    conn,
 		loginAt: time.Now(),
 	}
 
-	h.clients[subject] = client
+	h.clients[subject] = c
 	return nil
 }
 
 func (h *hub) UnregisterClient(ctx context.Context, subject string) error {
-	client, ok := h.clients[subject]
+	c, ok := h.clients[subject]
 	if ok {
-		client.conn.Close()
+		c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "注销"))
+		c.conn.Close()
 		delete(h.clients, subject)
 	}
 

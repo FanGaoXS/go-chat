@@ -28,17 +28,18 @@ type auth struct {
 
 func (a *auth) Verify(ctx context.Context) (context.Context, error) {
 	r := FromRequestCtx(ctx)
-	if r.Subject == "" {
-		return ctx, errors.New(errors.Unauthenticated, nil, "empty subject found")
-	}
 
-	u, err := a.user.GetUserBySubject(ctx, r.Subject)
+	// TODO: parse token to subject, email, phone ...
+
+	subject := r.Token
+
+	u, err := a.user.GetUserBySubject(ctx, subject)
 	if err != nil {
 		return nil, errors.New(errors.Unauthenticated, err, "")
 	}
 
 	ui := UserInfo{
-		Subject:  r.Subject,
+		Subject:  subject,
 		Nickname: u.Nickname,
 		Phone:    u.Phone,
 		Agent:    r.Agent,

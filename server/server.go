@@ -82,7 +82,7 @@ func (s *Server) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		s.logger.Infof("rest server stopped")
+		s.logger.Info("rest server stopped")
 		return nil
 	})
 
@@ -92,9 +92,16 @@ func (s *Server) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		s.logger.Infof("websocket server stopped")
+		s.logger.Info("websocket server stopped")
 		return nil
 	})
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.Close()
+		}
+	}()
 
 	defer s.Close()
 
@@ -106,8 +113,8 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) Close() error {
+	s.hub.Close()
 	s.restServer.Close()
 	s.wsServer.Close()
-	s.hub.Close()
 	return nil
 }

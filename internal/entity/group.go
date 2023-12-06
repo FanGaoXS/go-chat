@@ -11,6 +11,7 @@ type Group struct {
 	Type      GroupType `json:"type"`
 	IsPublic  bool      `json:"is_public"` // 是否公开的群
 	CreatedBy string    `json:"created_by"`
+
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -56,7 +57,8 @@ func GroupTypeFromString(s string) (GroupType, bool) {
 }
 
 type GroupMember struct {
-	UserSubject string    `json:"user_subject"`
-	GroupID     int64     `json:"group_id"`
-	JoinAt      time.Time `json:"join_at"`
+	UserSubject string `json:"user_subject"`
+	GroupID     int64  `json:"group_id"`
+
+	CreatedAt time.Time `json:"created_at"`
 }

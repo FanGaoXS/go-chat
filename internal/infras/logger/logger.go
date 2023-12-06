@@ -6,38 +6,66 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func New(env environment.Env) Logger {
-	logger := logrus.New()
-	logger.SetLevel(string2level(env.LogLevel))
-	logger.SetFormatter(&logrus.TextFormatter{})
-	logger.SetReportCaller(false)
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
 
-	return Logger{
-		logger: logger.WithFields(logrus.Fields{
+	Debugf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+}
+
+func New(env environment.Env) Logger {
+	log := logrus.New()
+	log.SetLevel(string2level(env.LogLevel))
+	log.SetFormatter(&logrus.TextFormatter{})
+	log.SetReportCaller(false)
+
+	return &logger{
+		log: log.WithFields(logrus.Fields{
 			"app":     env.AppName,
 			"version": env.AppVersion,
 		}),
 	}
 }
 
-type Logger struct {
-	logger *logrus.Entry
+type logger struct {
+	log *logrus.Entry
 }
 
-func (l *Logger) Debugf(format string, args ...interface{}) {
-	l.logger.Debugf(format, args...)
+func (l *logger) Debug(args ...interface{}) {
+	l.log.Debug(args...)
 }
 
-func (l *Logger) Infof(format string, args ...interface{}) {
-	l.logger.Infof(format, args...)
+func (l *logger) Info(args ...interface{}) {
+	l.log.Debug(args...)
 }
 
-func (l *Logger) Warnf(format string, args ...interface{}) {
-	l.logger.Warnf(format, args...)
+func (l *logger) Warn(args ...interface{}) {
+	l.log.Debug(args...)
 }
 
-func (l *Logger) Errorf(format string, args ...interface{}) {
-	l.logger.Errorf(format, args...)
+func (l *logger) Error(args ...interface{}) {
+	l.log.Debug(args...)
+}
+
+func (l *logger) Debugf(format string, args ...interface{}) {
+	l.log.Debugf(format, args...)
+}
+
+func (l *logger) Infof(format string, args ...interface{}) {
+	l.log.Infof(format, args...)
+}
+
+func (l *logger) Warnf(format string, args ...interface{}) {
+	l.log.Warnf(format, args...)
+}
+
+func (l *logger) Errorf(format string, args ...interface{}) {
+	l.log.Errorf(format, args...)
 }
 
 func string2level(s string) logrus.Level {

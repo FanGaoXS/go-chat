@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -47,6 +48,5 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) Close() error {
-	s.server.Close()
-	return nil
+	return s.server.Shutdown(context.Background())
 }

@@ -54,7 +54,7 @@ func (h *handlers) Shack() gin.HandlerFunc {
 
 		h.hub.RegisterClient(ctx, subject, conn)
 		h.logger.Infof("[%s] login", u.Nickname)
-		conn.WriteJSON(KV{"content": "Welcome! " + u.Nickname})
+		conn.WriteMessage(websocket.TextMessage, []byte("Welcome! "+u.Nickname))
 		for {
 			messageType, message, err := conn.ReadMessage()
 			if err != nil {

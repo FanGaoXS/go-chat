@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "user_friend"
 (
     user_subject   varchar(256) NOT NULL,
     friend_subject varchar(256) NOT NULL,
-    added_at       timestamp NULL DEFAULT now(),
+    created_at     timestamp NULL DEFAULT now(),
     CONSTRAINT user_friend_uq UNIQUE (user_subject, friend_subject),
     CONSTRAINT user_friend_user_fk FOREIGN KEY (user_subject) REFERENCES "user" (subject),
     CONSTRAINT user_friend_friend_fk FOREIGN KEY (friend_subject) REFERENCES "user" (subject)

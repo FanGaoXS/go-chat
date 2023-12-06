@@ -102,12 +102,24 @@ func (g *group) DeleteGroup(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	err = g.storage.DeleteGroupMemberByGroupID(ses, id)
+	if err != nil {
+		return err
+	}
 
 	err = g.storage.DeleteGroup(ses, id)
 	if err != nil {
 		return err
 	}
 
+	if err = ses.Commit(); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -3,6 +3,7 @@ package rest
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
@@ -48,23 +49,23 @@ func (h *handlers) RegisterUser() gin.HandlerFunc {
 		// POST
 		ctx := c.Request.Context()
 
-		nickname, ok := c.GetPostForm("nickname")
-		if !ok {
-			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid nickname"))
-			return
-		}
-		username, ok := c.GetPostForm("username")
-		if !ok {
+		nickname := strings.TrimSpace(c.PostForm("nickname"))
+		if nickname == "" {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid username"))
 			return
 		}
-		password, ok := c.GetPostForm("password")
-		if !ok {
+		username := strings.TrimSpace(c.PostForm("username"))
+		if username == "" {
+			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid username"))
+			return
+		}
+		password := strings.TrimSpace(c.PostForm("password"))
+		if password == "" {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid password"))
 			return
 		}
-		phone, ok := c.GetPostForm("phone")
-		if !ok {
+		phone := strings.TrimSpace(c.PostForm("phone"))
+		if phone == "" {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid phone"))
 			return
 		}
@@ -119,6 +120,26 @@ func (h *handlers) MyFriends() gin.HandlerFunc {
 	}
 }
 
+func (h *handlers) MyGroups() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		groups, err := h.group.ListGroupsOfUser(ctx, ui.Subject)
+		if len(groups) == 0 {
+			WrapGinError(c, errors.New(errors.NotFound, nil, "没有群组"))
+			return
+		}
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, groups)
+	}
+}
+
 func (h *handlers) AssignFriends() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -161,34 +182,14 @@ func (h *handlers) RemoveFriends() gin.HandlerFunc {
 
 // group
 
-func (h *handlers) MyGroups() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// GET
-		ctx := c.Request.Context()
-		ui := auth.FromContext(ctx)
-
-		groups, err := h.group.ListGroupsOfUser(ctx, ui.Subject)
-		if len(groups) == 0 {
-			WrapGinError(c, errors.New(errors.NotFound, nil, "没有群组"))
-			return
-		}
-		if err != nil {
-			WrapGinError(c, err)
-			return
-		}
-
-		c.JSON(http.StatusOK, groups)
-	}
-}
-
 func (h *handlers) InsertGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		name, ok := c.GetPostForm("name")
-		if !ok {
+		name := strings.TrimSpace(c.PostForm("name"))
+		if name == "" {
 			WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "invalid name"))
 			return
 		}
@@ -347,10 +348,20 @@ func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 			return
 		}
 
-		subjects, ok := c.GetPostFormArray("user_subject")
-		if !ok {
+		subjects := c.PostFormArray("user_subject")
+		if len(subjects) == 0 {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty user subjects"))
 			return
+		}
+		for _, subject := range subjects {
+			if subject = strings.TrimSpace(subject); subject == "" {
+				WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "empty user subject"))
+				return
+			}
+			if subject == ui.Subject {
+				WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "无法操作自己"))
+				return
+			}
 		}
 
 		g, err := h.group.GetGroupByID(ctx, groupID)
@@ -364,6 +375,53 @@ func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 		}
 
 		if err = h.group.AssignMembersToGroup(ctx, g.ID, subjects...); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func (h *handlers) RemoveMembersToGroup() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// PUT
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		groupID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		subjects := c.PostFormArray("user_subject")
+		if len(subjects) == 0 {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty user subjects"))
+			return
+		}
+		for _, subject := range subjects {
+			if subject = strings.TrimSpace(subject); subject == "" {
+				WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "empty user subject"))
+				return
+			}
+			if subject == ui.Subject {
+				WrapGinError(c, errors.Newf(errors.InvalidArgument, nil, "无法操作自己"))
+				return
+			}
+		}
+
+		g, err := h.group.GetGroupByID(ctx, groupID)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if g.CreatedBy != ui.Subject {
+			WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你不可以操作该群"))
+			return
+		}
+
+		if err = h.group.RemoveMembersFromGroup(ctx, g.ID, subjects...); err != nil {
 			WrapGinError(c, err)
 			return
 		}
@@ -418,8 +476,8 @@ func (h *handlers) MembersOfGroup() gin.HandlerFunc {
 func (h *handlers) BroadcastMessage() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
-		message, ok := c.GetPostForm("message")
-		if !ok {
+		message := strings.TrimSpace(c.PostForm("message"))
+		if message == "" {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty message"))
 			return
 		}
@@ -438,8 +496,8 @@ func (h *handlers) BroadcastMessage() gin.HandlerFunc {
 func (h *handlers) GroupMessage() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
-		message, ok := c.GetPostForm("message")
-		if !ok {
+		message := strings.TrimSpace(c.PostForm("message"))
+		if message == "" {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty message"))
 			return
 		}
@@ -463,14 +521,14 @@ func (h *handlers) GroupMessage() gin.HandlerFunc {
 func (h *handlers) PrivateMessage() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
-		message, ok := c.GetPostForm("message")
-		if !ok {
+		message := strings.TrimSpace(c.PostForm("message"))
+		if message == "" {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty message"))
 			return
 		}
-		receiver, ok := c.GetPostForm("receiver")
-		if !ok {
-			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty to"))
+		receiver := strings.TrimSpace(c.PostForm("receiver"))
+		if receiver == "" {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty receiver"))
 			return
 		}
 

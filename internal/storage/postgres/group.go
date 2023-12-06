@@ -146,6 +146,16 @@ func (p *postgres) InsertGroupMember(ses storage.Session, userSubject string, gr
 	return nil
 }
 
+func (p *postgres) DeleteGroupMemberByGroupID(ses storage.Session, groupID int64) error {
+	sqlstr := rebind(`DELETE FROM "group_member" WHERE group_id = ?;`)
+	_, err := ses.Exec(sqlstr, groupID)
+	if err != nil {
+		return wrapPGErrorf(err, "delete group member with group_id: %d failed", groupID)
+	}
+
+	return nil
+}
+
 func (p *postgres) DeleteGroupMember(ses storage.Session, userSubject string, groupID int64) error {
 	sqlstr := rebind(`DELETE FROM "group_member" WHERE user_subject = ? AND group_id = ?;`)
 	_, err := ses.Exec(sqlstr, userSubject, groupID)
@@ -160,7 +170,7 @@ func (p *postgres) listGroupMembers(ses storage.Session, where *entity.Where) ([
 	projection := []string{
 		"user_subject",
 		"group_id",
-		"join_at",
+		"created_at",
 	}
 	var args []any
 	sqlstr := fmt.Sprintf(`SELECT %s FROM "group_member"`, strings.Join(projection, ", "))
@@ -183,7 +193,7 @@ func (p *postgres) listGroupMembers(ses storage.Session, where *entity.Where) ([
 	var res []*entity.GroupMember
 	for rows.Next() {
 		r := entity.GroupMember{}
-		if err = rows.Scan(&r.UserSubject, &r.GroupID, &r.JoinAt); err != nil {
+		if err = rows.Scan(&r.UserSubject, &r.GroupID, &r.CreatedAt); err != nil {
 			return nil, wrapPGErrorf(err, "failed to scan group member")
 		}
 		res = append(res, &r)

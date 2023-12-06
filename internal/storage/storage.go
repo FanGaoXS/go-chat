@@ -28,6 +28,7 @@ type Storage interface {
 	UpdateGroupIsPublic(ses Session, id int64, isPublic bool) error
 
 	InsertGroupMember(ses Session, userSubject string, groupID int64) error
+	DeleteGroupMemberByGroupID(ses Session, groupID int64) error
 	DeleteGroupMember(ses Session, userSubject string, groupID int64) error
 	IsMemberOfGroup(ses Session, userSubject string, groupID int64) (bool, error)
 	GetGroupMember(ses Session, userSubject string, groupID int64) (*entity.GroupMember, error)

@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -31,13 +32,15 @@ func New(
 	}
 
 	v1 := router.Group("api/v1")
+	v1.POST("registerUser", hdls.RegisterUser())
+
+	p := v1.Group("personal", AuthMiddleware(authorizer))
 	{
-		v1.POST("registerUser", hdls.RegisterUser())
-		v1.GET("me", AuthMiddleware(authorizer), hdls.Me())
-		v1.GET("myFriends", AuthMiddleware(authorizer), hdls.MyFriends())
-		v1.PUT("assignFriends", AuthMiddleware(authorizer), hdls.AssignFriends())
-		v1.DELETE("removeFriends", AuthMiddleware(authorizer), hdls.RemoveFriends())
-		v1.GET("myGroups", AuthMiddleware(authorizer), hdls.MyGroups())
+		p.GET("me", hdls.Me())
+		p.GET("myFriends", hdls.MyFriends())
+		p.GET("myGroups", hdls.MyGroups())
+		p.PUT("assignFriends", hdls.AssignFriends())
+		p.DELETE("removeFriends", hdls.RemoveFriends())
 	}
 
 	g := v1.Group("group", AuthMiddleware(authorizer))
@@ -48,17 +51,18 @@ func New(
 		g.PUT("toPublic/:id", hdls.PublicGroup())
 		g.PUT("toPrivate/:id", hdls.PrivateGroup())
 		g.PUT("assignMembers/:id", hdls.AssignMembersToGroup())
+		g.PUT("removeMembers/:id", hdls.RemoveMembersToGroup())
 		g.GET("members/:id", hdls.MembersOfGroup())
 	}
 
 	r := v1.Group("record", AuthMiddleware(authorizer))
 	{
-		r.POST("broadcast", hdls.BroadcastMessage())
-		r.POST("group/:group_id", hdls.GroupMessage())
-		r.POST("private", hdls.PrivateMessage())
 		r.GET("broadcast", hdls.RecordBroadcast())
 		r.GET("group/:group_id", hdls.RecordGroup())
 		r.GET("private/:receiver", hdls.RecordPrivate())
+		r.POST("broadcast", hdls.BroadcastMessage())
+		r.POST("group/:group_id", hdls.GroupMessage())
+		r.POST("private", hdls.PrivateMessage())
 	}
 
 	s := &http.Server{
@@ -79,5 +83,5 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) Close() error {
-	return s.server.Close()
+	return s.server.Shutdown(context.Background())
 }

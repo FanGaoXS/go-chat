@@ -5,8 +5,7 @@ import "context"
 const RequestAdditionInCtx = "context:request_addition"
 
 type RequestAddition struct {
-	Subject string
-
+	Token string
 	Agent string
 }
 

@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/infras/logger"
@@ -26,15 +30,25 @@ func main() {
 		return
 	}
 
-	ctx := context.Background()
-	g, ctx := errgroup.WithContext(ctx)
+	closec := make(chan os.Signal, 1)
+	signal.Notify(closec, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return s.Run(ctx)
 	})
 
-	if err = g.Wait(); err != nil {
-		log.Fatal(err)
-		return
+	go func() {
+		<-closec
+		cancel()
+	}()
+
+	if err = g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		log.Println(err)
 	}
+
+	log.Println(env.AppName, env.AppVersion, "stopped")
 }
