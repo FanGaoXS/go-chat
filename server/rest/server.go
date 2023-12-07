@@ -45,21 +45,24 @@ func New(
 
 	g := v1.Group("group", AuthMiddleware(authorizer))
 	{
-		g.POST("", hdls.InsertGroup())
+		g.POST("", hdls.CreateGroup())
 		g.GET(":id", hdls.GetGroupByID())
 		g.DELETE(":id", hdls.DeleteGroup())
-		g.PUT("toPublic/:id", hdls.PublicGroup())
-		g.PUT("toPrivate/:id", hdls.PrivateGroup())
+		g.PUT("toPublic/:id", hdls.MakeGroupPublic())
+		g.PUT("toPrivate/:id", hdls.MakeGroupPrivate())
 		g.PUT("assignMembers/:id", hdls.AssignMembersToGroup())
-		g.PUT("removeMembers/:id", hdls.RemoveMembersToGroup())
+		g.PUT("removeMembers/:id", hdls.RemoveMembersFromGroup())
+		g.PUT("assignAdmins/:id", hdls.AssignAdminsToGroup())
+		g.PUT("removeAdmins/:id", hdls.RemoveAdminsFromGroup())
 		g.GET("members/:id", hdls.MembersOfGroup())
+		g.GET("admins/:id", hdls.AdminsOfGroup())
 	}
 
 	r := v1.Group("record", AuthMiddleware(authorizer))
 	{
-		r.GET("broadcast", hdls.RecordBroadcast())
-		r.GET("group/:group_id", hdls.RecordGroup())
-		r.GET("private/:receiver", hdls.RecordPrivate())
+		r.GET("broadcast", hdls.GetRecordBroadcast())
+		r.GET("group/:group_id", hdls.GetRecordGroup())
+		r.GET("private/:receiver", hdls.GetRecordPrivate())
 		r.POST("broadcast", hdls.BroadcastMessage())
 		r.POST("group/:group_id", hdls.GroupMessage())
 		r.POST("private", hdls.PrivateMessage())

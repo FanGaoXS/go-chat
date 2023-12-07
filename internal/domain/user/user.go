@@ -2,10 +2,12 @@ package user
 
 import (
 	"context"
+
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
+	
 	"github.com/google/uuid"
 )
 
@@ -23,8 +25,8 @@ type User interface {
 	AllUsers(ctx context.Context) ([]*entity.User, error)
 
 	AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error
-	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
 	RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error
+	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
 	IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error)
 }
 

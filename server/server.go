@@ -49,7 +49,7 @@ func newServer(
 		return nil, err
 	}
 
-	wsServer, err := websocket.New(env, logger, httpServer, user, hb)
+	wsServer, err := websocket.New(env, logger, httpServer, authorizer, user, group, hb)
 	if err != nil {
 		return nil, err
 	}

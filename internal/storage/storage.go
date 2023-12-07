@@ -27,13 +27,16 @@ type Storage interface {
 	DeleteGroup(ses Session, id int64) error
 	UpdateGroupIsPublic(ses Session, id int64, isPublic bool) error
 
-	InsertGroupMember(ses Session, userSubject string, groupID int64) error
-	DeleteGroupMemberByGroupID(ses Session, groupID int64) error
+	InsertGroupMember(ses Session, i *entity.GroupMember) error
+	DeleteGroupMembersByGroupID(ses Session, groupID int64) error
 	DeleteGroupMember(ses Session, userSubject string, groupID int64) error
-	IsMemberOfGroup(ses Session, userSubject string, groupID int64) (bool, error)
 	GetGroupMember(ses Session, userSubject string, groupID int64) (*entity.GroupMember, error)
+	IsMemberOfGroup(ses Session, userSubject string, groupID int64) (bool, error)
 	ListGroupMembersByGroupID(ses Session, groupID int64) ([]*entity.GroupMember, error)
 	ListGroupMembersByUserSubject(ses Session, userSubject string) ([]*entity.GroupMember, error)
+	IsAdminOfGroup(ses Session, subject string, groupID int64) (bool, error)
+	UpdateGroupMemberIsAdmin(ses Session, subject string, groupID int64, isAdmin bool) error
+	ListGroupAdminsByGroupID(ses Session, groupID int64) ([]*entity.GroupMember, error)
 
 	InsertRecordBroadcast(ses Session, i *entity.RecordBroadcast) (int64, error)
 	ListAllRecordBroadcasts(ses Session) ([]*entity.RecordBroadcast, error)

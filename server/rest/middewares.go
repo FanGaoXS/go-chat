@@ -6,6 +6,7 @@ import (
 
 	"fangaoxs.com/go-chat/internal/auth"
 	"fangaoxs.com/go-chat/internal/infras/errors"
+
 	"github.com/gin-gonic/gin"
 )
 

@@ -2,7 +2,7 @@ package auth
 
 import "context"
 
-const RequestAdditionInCtx = "context:request_addition"
+const requestAdditionInCtx = "context:request_addition"
 
 type RequestAddition struct {
 	Token string
@@ -10,11 +10,11 @@ type RequestAddition struct {
 }
 
 func WithRequestCtx(ctx context.Context, add RequestAddition) context.Context {
-	return context.WithValue(ctx, RequestAdditionInCtx, add)
+	return context.WithValue(ctx, requestAdditionInCtx, add)
 }
 
 func FromRequestCtx(ctx context.Context) RequestAddition {
-	v := ctx.Value(RequestAdditionInCtx)
+	v := ctx.Value(requestAdditionInCtx)
 	if v == nil {
 		return RequestAddition{}
 	}

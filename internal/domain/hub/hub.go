@@ -85,7 +85,10 @@ func (h *hub) SendBroadcastMessage(ctx context.Context, sender, content string) 
 		return err
 	}
 
-	for _, c := range h.clients {
+	for subject, c := range h.clients {
+		if sender == subject {
+			continue // 不发送给自己
+		}
 		m := map[string]any{
 			"type":    "broadcast",
 			"content": content,

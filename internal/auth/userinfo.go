@@ -2,7 +2,7 @@ package auth
 
 import "context"
 
-const KeyInCtx = "context:userinfo"
+const keyInCtx = "context:userinfo"
 
 type UserInfo struct {
 	Subject  string
@@ -13,11 +13,11 @@ type UserInfo struct {
 }
 
 func WithContext(ctx context.Context, ui UserInfo) context.Context {
-	return context.WithValue(ctx, KeyInCtx, ui)
+	return context.WithValue(ctx, keyInCtx, ui)
 }
 
 func FromContext(ctx context.Context) UserInfo {
-	v := ctx.Value(KeyInCtx)
+	v := ctx.Value(keyInCtx)
 	if v == nil {
 		return UserInfo{}
 	}

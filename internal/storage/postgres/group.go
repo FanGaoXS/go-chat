@@ -127,26 +127,27 @@ func (p *postgres) UpdateGroupIsPublic(ses storage.Session, id int64, isPublic b
 	return nil
 }
 
-func (p *postgres) InsertGroupMember(ses storage.Session, userSubject string, groupID int64) error {
+func (p *postgres) InsertGroupMember(ses storage.Session, i *entity.GroupMember) error {
 	sqlstr := rebind(`INSERT INTO "group_member"
-                  (user_subject, group_id)
+                  (user_subject, group_id, is_admin)
                   VALUES
-                  (?, ?);`)
+                  (?, ?, ?);`)
 
 	args := []any{
-		userSubject,
-		groupID,
+		i.UserSubject,
+		i.GroupID,
+		i.IsAdmin,
 	}
 
 	_, err := ses.Exec(sqlstr, args...)
 	if err != nil {
-		return wrapPGErrorf(err, "insert group member with user_subject: %s and group_id: %d failed", userSubject, groupID)
+		return wrapPGErrorf(err, "failed to insert group member")
 	}
 
 	return nil
 }
 
-func (p *postgres) DeleteGroupMemberByGroupID(ses storage.Session, groupID int64) error {
+func (p *postgres) DeleteGroupMembersByGroupID(ses storage.Session, groupID int64) error {
 	sqlstr := rebind(`DELETE FROM "group_member" WHERE group_id = ?;`)
 	_, err := ses.Exec(sqlstr, groupID)
 	if err != nil {
@@ -170,6 +171,7 @@ func (p *postgres) listGroupMembers(ses storage.Session, where *entity.Where) ([
 	projection := []string{
 		"user_subject",
 		"group_id",
+		"is_admin",
 		"created_at",
 	}
 	var args []any
@@ -193,7 +195,7 @@ func (p *postgres) listGroupMembers(ses storage.Session, where *entity.Where) ([
 	var res []*entity.GroupMember
 	for rows.Next() {
 		r := entity.GroupMember{}
-		if err = rows.Scan(&r.UserSubject, &r.GroupID, &r.CreatedAt); err != nil {
+		if err = rows.Scan(&r.UserSubject, &r.GroupID, &r.IsAdmin, &r.CreatedAt); err != nil {
 			return nil, wrapPGErrorf(err, "failed to scan group member")
 		}
 		res = append(res, &r)
@@ -250,6 +252,20 @@ func (p *postgres) ListGroupMembersByGroupID(ses storage.Session, groupID int64)
 	return res, nil
 }
 
+func (p *postgres) ListGroupAdminsByGroupID(ses storage.Session, groupID int64) ([]*entity.GroupMember, error) {
+	w := &entity.Where{
+		FieldNames:  []string{"group_id", "is_admin"},
+		FieldValues: []any{groupID, true},
+	}
+
+	res, err := p.listGroupMembers(ses, w)
+	if err != nil {
+		return nil, wrapPGErrorf(err, "list group admins with group_id: %d failed", groupID)
+	}
+
+	return res, nil
+}
+
 func (p *postgres) ListGroupMembersByUserSubject(ses storage.Session, userSubject string) ([]*entity.GroupMember, error) {
 	w := &entity.Where{
 		FieldNames:  []string{"user_subject"},
@@ -262,4 +278,23 @@ func (p *postgres) ListGroupMembersByUserSubject(ses storage.Session, userSubjec
 	}
 
 	return res, nil
+}
+
+func (p *postgres) IsAdminOfGroup(ses storage.Session, subject string, groupID int64) (bool, error) {
+	gm, err := p.GetGroupMember(ses, subject, groupID)
+	if err != nil {
+		return false, err
+	}
+
+	return gm.IsAdmin, nil
+}
+
+func (p *postgres) UpdateGroupMemberIsAdmin(ses storage.Session, subject string, groupID int64, isAdmin bool) error {
+	sqlstr := rebind(`UPDATE SET is_admin = ? WHERE subject = ? AND group_id = ?;`)
+	_, err := ses.Exec(sqlstr, isAdmin, subject, groupID)
+	if err != nil {
+		return wrapPGErrorf(err, "update is_admin of group member with subject: %s and group_id: %d to %t failed", subject, groupID, isAdmin)
+	}
+
+	return nil
 }

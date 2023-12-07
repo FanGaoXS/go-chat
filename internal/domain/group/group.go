@@ -2,10 +2,10 @@ package group
 
 import (
 	"context"
-	"fangaoxs.com/go-chat/internal/infras/errors"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
+	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
 )
 
@@ -20,14 +20,19 @@ type Group interface {
 	GetGroupByID(ctx context.Context, id int64) (*entity.Group, error)
 	ListGroupsByCreatedBy(ctx context.Context, createdBy string) ([]*entity.Group, error)
 	DeleteGroup(ctx context.Context, id int64) error
-	PrivateGroup(ctx context.Context, id int64) error
-	PublicGroup(ctx context.Context, id int64) error
+	MakeGroupPrivate(ctx context.Context, id int64) error
+	MakeGroupPublic(ctx context.Context, id int64) error
+	ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error)
 
 	AssignMembersToGroup(ctx context.Context, groupID int64, userSubject ...string) error
 	RemoveMembersFromGroup(ctx context.Context, groupID int64, userSubject ...string) error
-	ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error)
-	ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error)
 	IsMemberOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error)
+	ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error)
+
+	AssignAdminsToGroup(ctx context.Context, groupID int64, adminSubject ...string) error
+	RemoveAdminsFromGroup(ctx context.Context, groupID int64, adminSubject ...string) error
+	IsAdminOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error)
+	ListAdminsOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error)
 }
 
 func New(env environment.Env, storage storage.Storage) (Group, error) {
@@ -59,7 +64,12 @@ func (g *group) CreateGroup(ctx context.Context, input CreateGroupInput) (int64,
 		return 0, err
 	}
 
-	if err = g.storage.InsertGroupMember(ses, input.CreatedBy, gID); err != nil {
+	e := &entity.GroupMember{
+		UserSubject: input.CreatedBy,
+		GroupID:     gID,
+		IsAdmin:     true,
+	}
+	if err = g.storage.InsertGroupMember(ses, e); err != nil {
 		return 0, err
 	}
 
@@ -107,7 +117,7 @@ func (g *group) DeleteGroup(ctx context.Context, id int64) error {
 		return err
 	}
 
-	err = g.storage.DeleteGroupMemberByGroupID(ses, id)
+	err = g.storage.DeleteGroupMembersByGroupID(ses, id)
 	if err != nil {
 		return err
 	}
@@ -123,7 +133,7 @@ func (g *group) DeleteGroup(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (g *group) PrivateGroup(ctx context.Context, id int64) error {
+func (g *group) MakeGroupPrivate(ctx context.Context, id int64) error {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -137,7 +147,7 @@ func (g *group) PrivateGroup(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (g *group) PublicGroup(ctx context.Context, id int64) error {
+func (g *group) MakeGroupPublic(ctx context.Context, id int64) error {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -151,6 +161,34 @@ func (g *group) PublicGroup(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (g *group) ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error) {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	gms, err := g.storage.ListGroupMembersByUserSubject(ses, userSubject)
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]*entity.Group, 0, len(gms))
+	for _, gm := range gms {
+		grp, err := g.storage.GetGroupByID(ses, gm.GroupID)
+		if err != nil {
+			return nil, err
+		}
+
+		groups = append(groups, grp)
+	}
+
+	if len(groups) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty groups of user: %s", userSubject)
+	}
+
+	return groups, nil
+}
+
 func (g *group) AssignMembersToGroup(ctx context.Context, groupID int64, userSubject ...string) error {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
@@ -162,7 +200,12 @@ func (g *group) AssignMembersToGroup(ctx context.Context, groupID int64, userSub
 	}
 
 	for _, subject := range userSubject {
-		err = g.storage.InsertGroupMember(ses, subject, groupID)
+		i := &entity.GroupMember{
+			UserSubject: subject,
+			GroupID:     groupID,
+			IsAdmin:     false,
+		}
+		err = g.storage.InsertGroupMember(ses, i)
 		if err != nil {
 			return err
 		}
@@ -197,32 +240,18 @@ func (g *group) RemoveMembersFromGroup(ctx context.Context, groupID int64, userS
 	return nil
 }
 
-func (g *group) ListGroupsOfUser(ctx context.Context, userSubject string) ([]*entity.Group, error) {
+func (g *group) IsMemberOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error) {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	gms, err := g.storage.ListGroupMembersByUserSubject(ses, userSubject)
+	ok, err := g.storage.IsMemberOfGroup(ses, memberSubject, groupID)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	groups := make([]*entity.Group, 0, len(gms))
-	for _, gm := range gms {
-		grp, err := g.storage.GetGroupByID(ses, gm.GroupID)
-		if err != nil {
-			return nil, err
-		}
-
-		groups = append(groups, grp)
-	}
-
-	if len(groups) == 0 {
-		return nil, errors.Newf(errors.NotFound, nil, "empty groups of user: %s", userSubject)
-	}
-
-	return groups, nil
+	return ok, nil
 }
 
 func (g *group) ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error) {
@@ -253,16 +282,106 @@ func (g *group) ListMembersOfGroup(ctx context.Context, groupID int64) ([]*entit
 	return members, nil
 }
 
-func (g *group) IsMemberOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error) {
+func (g *group) AssignAdminsToGroup(ctx context.Context, groupID int64, adminSubject ...string) error {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, subject := range adminSubject {
+		ok, err := g.storage.IsMemberOfGroup(ses, subject, groupID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.Newf(errors.NotFound, nil, "[%s]不在[%d]群里", subject, groupID)
+		}
+
+		err = g.storage.UpdateGroupMemberIsAdmin(ses, subject, groupID, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (g *group) RemoveAdminsFromGroup(ctx context.Context, groupID int64, adminSubject ...string) error {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, subject := range adminSubject {
+		ok, err := g.storage.IsMemberOfGroup(ses, subject, groupID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.Newf(errors.NotFound, nil, "[%s]不在[%d]群里", subject, groupID)
+		}
+
+		err = g.storage.UpdateGroupMemberIsAdmin(ses, subject, groupID, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (g *group) IsAdminOfGroup(ctx context.Context, groupID int64, memberSubject string) (bool, error) {
 	ses, err := g.storage.NewSession(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	ok, err := g.storage.IsMemberOfGroup(ses, memberSubject, groupID)
+	ok, err := g.storage.IsAdminOfGroup(ses, memberSubject, groupID)
 	if err != nil {
 		return false, err
 	}
 
 	return ok, nil
+}
+
+func (g *group) ListAdminsOfGroup(ctx context.Context, groupID int64) ([]*entity.User, error) {
+	ses, err := g.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	gms, err := g.storage.ListGroupAdminsByGroupID(ses, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	members := make([]*entity.User, 0, len(gms))
+	for _, gm := range gms {
+		user, err := g.storage.GetUserBySubject(ses, gm.UserSubject)
+		if err != nil {
+			return nil, err
+		}
+
+		members = append(members, user)
+	}
+
+	if len(members) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "empty admins of group: %d", groupID)
+	}
+
+	return members, nil
 }

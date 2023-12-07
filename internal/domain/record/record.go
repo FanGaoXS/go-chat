@@ -2,12 +2,12 @@ package record
 
 import (
 	"context"
+
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/internal/storage"
-	"strings"
 )
 
 type Record interface {
@@ -15,7 +15,7 @@ type Record interface {
 	InsertRecordGroup(ctx context.Context, sender, content string, groupID int64) error
 	InsertRecordPrivate(ctx context.Context, sender, content, receiver string) error
 
-	ListRecordBroadcasts(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error)
+	ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordBroadcast, error)
 	ListRecordBroadcastsBySender(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error)
 	ListRecordGroups(ctx context.Context, groupID int64) ([]*entity.RecordGroup, error)
 	ListRecordPrivate(ctx context.Context, sender, receiver string) ([]*entity.RecordPrivate, error)
@@ -58,8 +58,7 @@ func (r *record) InsertRecordGroup(ctx context.Context, sender, content string, 
 		return err
 	}
 
-	// 检查sender是否在group中
-	_, err = r.storage.GetGroupMember(ses, sender, groupID)
+	_, err = r.storage.GetGroupByID(ses, groupID)
 	if err != nil {
 		return err
 	}
@@ -83,26 +82,9 @@ func (r *record) InsertRecordPrivate(ctx context.Context, sender, content, recei
 		return err
 	}
 
-	// 检查receiver是否存在
 	_, err = r.storage.GetUserBySubject(ses, receiver)
 	if err != nil {
 		return err
-	}
-
-	ok, err := r.storage.IsFriendOfUser(ses, sender, receiver)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return errors.Newf(errors.NotFound, nil, "发送者没有添加接受者为好友")
-	}
-
-	ok, err = r.storage.IsFriendOfUser(ses, receiver, sender)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return errors.Newf(errors.NotFound, nil, "接受者没有添加发送者为好友")
 	}
 
 	rcd := &entity.RecordPrivate{
@@ -118,23 +100,15 @@ func (r *record) InsertRecordPrivate(ctx context.Context, sender, content, recei
 	return nil
 }
 
-func (r *record) ListRecordBroadcasts(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error) {
+func (r *record) ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordBroadcast, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var res []*entity.RecordBroadcast
-	if sender = strings.TrimSpace(sender); sender == "" {
-		res, err = r.storage.ListAllRecordBroadcasts(ses)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		res, err = r.storage.ListRecordBroadcastsBySender(ses, sender)
-		if err != nil {
-			return nil, err
-		}
+	res, err := r.storage.ListAllRecordBroadcasts(ses)
+	if err != nil {
+		return nil, err
 	}
 	if len(res) == 0 {
 		return nil, errors.New(errors.NotFound, nil, "empty record_broadcast")
@@ -160,8 +134,14 @@ func (r *record) ListRecordBroadcastsBySender(ctx context.Context, sender string
 	return res, nil
 }
 
+// ListRecordGroups 查询groupID群的群聊记录，当且仅当groupID存在时
 func (r *record) ListRecordGroups(ctx context.Context, groupID int64) ([]*entity.RecordGroup, error) {
 	ses, err := r.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = r.storage.GetGroupByID(ses, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +157,18 @@ func (r *record) ListRecordGroups(ctx context.Context, groupID int64) ([]*entity
 	return res, nil
 }
 
+// ListRecordPrivate 查询subject1和subject2的私聊记录，当且仅当subject1和subject2存在时
 func (r *record) ListRecordPrivate(ctx context.Context, subject1, subject2 string) ([]*entity.RecordPrivate, error) {
 	ses, err := r.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = r.storage.GetUserBySubject(ses, subject1)
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.storage.GetUserBySubject(ses, subject2)
 	if err != nil {
 		return nil, err
 	}

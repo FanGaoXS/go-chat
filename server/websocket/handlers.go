@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"fangaoxs.com/go-chat/environment"
+	"fangaoxs.com/go-chat/internal/auth"
+	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/errors"
@@ -15,10 +18,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func newHandlers(env environment.Env, logger logger.Logger, user user.User, hub hub.Hub) (handlers, error) {
+func newHandlers(env environment.Env, logger logger.Logger, user user.User, group group.Group, hub hub.Hub) (handlers, error) {
 	return handlers{
 		logger: logger,
 		user:   user,
+		group:  group,
 		hub:    hub,
 	}, nil
 }
@@ -26,19 +30,35 @@ func newHandlers(env environment.Env, logger logger.Logger, user user.User, hub 
 type handlers struct {
 	logger logger.Logger
 
-	user user.User
-	hub  hub.Hub
+	user  user.User
+	group group.Group
+	hub   hub.Hub
 }
 
-func (h *handlers) Shack() gin.HandlerFunc {
+func (h *handlers) Shack(authorizer auth.Authorizer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
-		subject, ok := c.GetQuery("subject")
-		if !ok {
+		token := strings.TrimSpace(c.Query("token"))
+		if token == "" {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty subject"))
 			return
 		}
+
 		ctx := c.Request.Context()
+		r := auth.RequestAddition{
+			Token: token,
+			Agent: "",
+		}
+		ctx = auth.WithRequestCtx(ctx, r)
+		ctx, err := authorizer.Verify(ctx)
+		if err != nil {
+			WrapGinError(c, errors.Newf(errors.Unauthenticated, err, ""))
+			return
+		}
+		c.Request = c.Request.Clone(ctx)
+		ui := auth.FromContext(ctx)
+		subject := ui.Subject
+
 		u, err := h.user.GetUserBySubject(ctx, subject)
 		if err != nil {
 			WrapGinError(c, err)
@@ -88,7 +108,17 @@ func (h *handlers) Shack() gin.HandlerFunc {
 					break
 				}
 				content := m["content"]
-				if err := h.hub.SendGroupMessage(ctx, subject, content, groupID); err != nil {
+				ok, err := h.group.IsMemberOfGroup(ctx, groupID, subject)
+				if err != nil {
+					conn.WriteJSON(KV{"error": err.Error()})
+					break
+				}
+				if !ok {
+					conn.WriteJSON(KV{"error": "你不是该群成员"})
+					break
+				}
+
+				if err = h.hub.SendGroupMessage(ctx, subject, content, groupID); err != nil {
 					h.logger.Errorf("%s send group message to %d failed: %w", subject, groupID, err)
 					conn.WriteJSON(KV{"error": err.Error()})
 					break
@@ -96,7 +126,17 @@ func (h *handlers) Shack() gin.HandlerFunc {
 			case "private":
 				content := m["content"]
 				receiver := m["receiver"]
-				if err := h.hub.SendPrivateMessage(ctx, subject, content, receiver); err != nil {
+				ok, err := h.user.IsFriendOfUser(ctx, subject, receiver)
+				if err != nil {
+					conn.WriteJSON(KV{"error": err.Error()})
+					break
+				}
+				if !ok {
+					conn.WriteJSON(KV{"error": "对方不是你的好友"})
+					break
+				}
+
+				if err = h.hub.SendPrivateMessage(ctx, subject, content, receiver); err != nil {
 					h.logger.Errorf("%s send private message to %d failed: %w", subject, receiver, err)
 					conn.WriteJSON(KV{"error": err.Error()})
 					break
