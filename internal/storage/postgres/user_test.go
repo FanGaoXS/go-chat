@@ -6,6 +6,8 @@ import (
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
+
+	"github.com/google/uuid"
 )
 
 func (s *postgresSuite) TestUser() {
@@ -15,40 +17,41 @@ func (s *postgresSuite) TestUser() {
 	s.Require().Nil(err)
 	defer ses.Rollback()
 
+	subject := uuid.NewString()
 	u := &entity.User{
+		Subject:  subject,
 		Nickname: "foo_nick",
 		Username: "foo_name",
 		Password: "foo_pw",
 		Phone:    "foo_phone",
 	}
-	id, err := s.storage.InsertUser(ses, u)
+	err = s.storage.InsertUser(ses, u)
 	s.Require().Nil(err)
-	s.Require().NotEmpty(id)
 
-	got, err := s.storage.GetUserByID(ses, id)
+	got, err := s.storage.GetUserBySubject(ses, subject)
 	s.Require().Nil(err)
 	s.Require().Equal(u.Nickname, got.Nickname)
 	s.Require().Equal(u.Username, got.Username)
 	s.Require().Equal(u.Password, got.Password)
 	s.Require().Equal(u.Phone, got.Phone)
 
-	err = s.storage.DeleteUser(ses, id)
+	err = s.storage.DeleteUser(ses, subject)
 	s.Require().Nil(err)
 
-	got, err = s.storage.GetUserByID(ses, id)
+	got, err = s.storage.GetUserBySubject(ses, subject)
 	s.Require().Equal(errors.Code(err), errors.NotFound)
 }
 
 func (s *postgresSuite) addUser(ses storage.Session) *entity.User {
 	u := &entity.User{
+		Subject:  uuid.NewString(),
 		Nickname: "foo_nick",
 		Username: "foo_name",
 		Password: "foo_pw",
 		Phone:    "foo_phone",
 	}
-	id, err := s.storage.InsertUser(ses, u)
+	err := s.storage.InsertUser(ses, u)
 	s.Require().Nil(err)
-	u.ID = id
 
 	return u
 }

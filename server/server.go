@@ -4,15 +4,25 @@ import (
 	"context"
 
 	"fangaoxs.com/go-chat/environment"
+	"fangaoxs.com/go-chat/internal/auth"
+	"fangaoxs.com/go-chat/internal/domain/group"
+	"fangaoxs.com/go-chat/internal/domain/hub"
+	"fangaoxs.com/go-chat/internal/domain/record"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 	"fangaoxs.com/go-chat/server/rest"
-	
+	"fangaoxs.com/go-chat/server/websocket"
+
+	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
 
 func New(env environment.Env, logger logger.Logger) (*Server, error) {
-	server, err := initServer(env, logger)
+	httpServer := gin.New()
+	gin.ForceConsoleColor()
+	httpServer.Use(gin.Logger())
+
+	server, err := initServer(env, logger, httpServer)
 	if err != nil {
 		return nil, err
 	}
@@ -20,8 +30,26 @@ func New(env environment.Env, logger logger.Logger) (*Server, error) {
 	return server, nil
 }
 
-func newServer(env environment.Env, logger logger.Logger, user user.User) (*Server, error) {
-	restServer, err := rest.New(env, logger, user)
+func newServer(
+	env environment.Env,
+	logger logger.Logger,
+	httpServer *gin.Engine,
+	authorizer auth.Authorizer,
+	user user.User,
+	group group.Group,
+	record record.Record,
+) (*Server, error) {
+	hb, err := hub.NewHub(env, logger, record, group)
+	if err != nil {
+		return nil, err
+	}
+
+	restServer, err := rest.New(env, logger, httpServer, authorizer, user, group, hb, record)
+	if err != nil {
+		return nil, err
+	}
+
+	wsServer, err := websocket.New(env, logger, httpServer, authorizer, user, group, hb)
 	if err != nil {
 		return nil, err
 	}
@@ -30,6 +58,8 @@ func newServer(env environment.Env, logger logger.Logger, user user.User) (*Serv
 		env:        env,
 		logger:     logger,
 		restServer: restServer,
+		wsServer:   wsServer,
+		hub:        hb,
 	}, nil
 }
 
@@ -38,6 +68,9 @@ type Server struct {
 	logger logger.Logger
 
 	restServer *rest.Server
+	wsServer   *websocket.Server
+
+	hub hub.Hub
 }
 
 func (s *Server) Run(ctx context.Context) error {
@@ -49,9 +82,26 @@ func (s *Server) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		s.logger.Infof("rest server stopped")
+		s.logger.Info("rest server stopped")
 		return nil
 	})
+
+	g.Go(func() error {
+		s.logger.Infof("websocket server listen on %s", s.env.WebsocketListenAddr)
+		err := s.wsServer.ListenAndServe()
+		if err != nil {
+			return err
+		}
+		s.logger.Info("websocket server stopped")
+		return nil
+	})
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.Close()
+		}
+	}()
 
 	defer s.Close()
 
@@ -63,6 +113,8 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) Close() error {
+	s.hub.Close()
 	s.restServer.Close()
+	s.wsServer.Close()
 	return nil
 }

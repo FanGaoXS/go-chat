@@ -3,11 +3,18 @@ package entity
 import "time"
 
 type User struct {
-	ID       int64
-	Nickname string
-	Username string
-	Password string
-	Phone    string
+	Subject  string `json:"subject"`
+	Nickname string `json:"nickname"`
+	Username string `json:"username"`
+	Password string `json:"-"`
+	Phone    string `json:"phone"`
 
-	CreatedAt time.Time
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type UserFriend struct {
+	UserSubject   string `json:"user_subject"`
+	FriendSubject string `json:"friend_subject"`
+
+	CreatedAt time.Time `json:"created_at"`
 }
