@@ -290,10 +290,10 @@ func (h *handlers) DeleteGroup() gin.HandlerFunc {
 	}
 }
 
-func (h *handlers) MakeGroupPrivate() gin.HandlerFunc {
+func (h *handlers) MakeGroupPublic() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
-		// 群管理员可以将群私有
+		// 群管理员可以将群公开
 
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
@@ -314,7 +314,7 @@ func (h *handlers) MakeGroupPrivate() gin.HandlerFunc {
 			return
 		}
 
-		err = h.group.MakeGroupPrivate(ctx, id)
+		err = h.group.MakeGroupPublic(ctx, id)
 		if err != nil {
 			WrapGinError(c, err)
 			return
@@ -324,10 +324,10 @@ func (h *handlers) MakeGroupPrivate() gin.HandlerFunc {
 	}
 }
 
-func (h *handlers) MakeGroupPublic() gin.HandlerFunc {
+func (h *handlers) MakeGroupPrivate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
-		// 群管理员可以将群公开
+		// 群管理员可以将群私有
 
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)

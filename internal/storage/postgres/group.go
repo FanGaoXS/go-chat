@@ -290,10 +290,10 @@ func (p *postgres) IsAdminOfGroup(ses storage.Session, subject string, groupID i
 }
 
 func (p *postgres) UpdateGroupMemberIsAdmin(ses storage.Session, subject string, groupID int64, isAdmin bool) error {
-	sqlstr := rebind(`UPDATE SET is_admin = ? WHERE subject = ? AND group_id = ?;`)
+	sqlstr := rebind(`UPDATE "group_member" SET is_admin = ? WHERE user_subject = ? AND group_id = ?;`)
 	_, err := ses.Exec(sqlstr, isAdmin, subject, groupID)
 	if err != nil {
-		return wrapPGErrorf(err, "update is_admin of group member with subject: %s and group_id: %d to %t failed", subject, groupID, isAdmin)
+		return wrapPGErrorf(err, "update is_admin of group member with user_subject: %s and group_id: %d to %t failed", subject, groupID, isAdmin)
 	}
 
 	return nil
