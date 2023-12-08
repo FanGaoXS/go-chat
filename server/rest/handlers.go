@@ -361,6 +361,8 @@ func (h *handlers) MakeGroupPrivate() gin.HandlerFunc {
 func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
+		// 群管理员可以添加成员
+
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -408,6 +410,8 @@ func (h *handlers) AssignMembersToGroup() gin.HandlerFunc {
 func (h *handlers) RemoveMembersFromGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
+		// 群管理员可以移除成员
+
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -454,7 +458,9 @@ func (h *handlers) RemoveMembersFromGroup() gin.HandlerFunc {
 
 func (h *handlers) MembersOfGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// GEt
+		// GET
+		// 只有群成员可以查看该群
+
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -491,6 +497,8 @@ func (h *handlers) MembersOfGroup() gin.HandlerFunc {
 func (h *handlers) AssignAdminsToGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
+		// 只有群创建者可以添加管理员
+
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -539,6 +547,8 @@ func (h *handlers) AssignAdminsToGroup() gin.HandlerFunc {
 func (h *handlers) RemoveAdminsFromGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
+		// 只有群创建者可以移除管理员
+
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
@@ -586,7 +596,9 @@ func (h *handlers) RemoveAdminsFromGroup() gin.HandlerFunc {
 
 func (h *handlers) AdminsOfGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// GEt
+		// GET
+		// 只有群成员可以访问群管理员
+
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
