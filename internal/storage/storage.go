@@ -16,10 +16,10 @@ type Storage interface {
 	GetUserBySecret(ses Session, username, password string) (*entity.User, error)
 	DeleteUser(ses Session, subject string) error
 
-	InsertUserFriend(ses Session, i *entity.UserFriend) error
+	InsertFriendship(ses Session, i *entity.Friendship) error
 	IsFriendOfUser(ses Session, userSubject, friendSubject string) (bool, error)
-	ListUserFriendsByUserSubject(ses Session, userSubject string) ([]*entity.UserFriend, error)
-	DeleteUserFriend(ses Session, userSubject, friendSubject string) error
+	ListFriendshipsByUserSubject(ses Session, userSubject string) ([]*entity.Friendship, error)
+	DeleteFriendship(ses Session, userSubject, friendSubject string) error
 
 	InsertGroup(ses Session, i *entity.Group) (int64, error)
 	GetGroupByID(ses Session, id int64) (*entity.Group, error)
