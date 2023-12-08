@@ -2,11 +2,12 @@ package postgres
 
 import (
 	"context"
-	"github.com/google/uuid"
 
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
+
+	"github.com/google/uuid"
 )
 
 func (s *postgresSuite) TestUser() {
