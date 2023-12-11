@@ -6,7 +6,7 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/domain/group"
-	"fangaoxs.com/go-chat/internal/domain/record"
+	"fangaoxs.com/go-chat/internal/domain/records"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
 	"github.com/gorilla/websocket"
@@ -28,7 +28,7 @@ type Hub interface {
 	SendPrivateMessage(ctx context.Context, sender, content, receiver string) error
 }
 
-func NewHub(env environment.Env, logger logger.Logger, record record.Record, group group.Group) (Hub, error) {
+func NewHub(env environment.Env, logger logger.Logger, record records.Records, group group.Group) (Hub, error) {
 	return &hub{
 		clients: make(map[string]*Client),
 		record:  record,
@@ -39,7 +39,7 @@ func NewHub(env environment.Env, logger logger.Logger, record record.Record, gro
 type hub struct {
 	clients map[string]*Client
 
-	record record.Record
+	record records.Records
 	group  group.Group
 }
 

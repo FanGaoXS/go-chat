@@ -7,9 +7,10 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
+	"fangaoxs.com/go-chat/internal/domain/application"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
-	"fangaoxs.com/go-chat/internal/domain/record"
+	"fangaoxs.com/go-chat/internal/domain/records"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
@@ -24,24 +25,27 @@ func newHandlers(
 	user user.User,
 	group group.Group,
 	hub hub.Hub,
-	record record.Record,
+	record records.Records,
+	application application.Application,
 ) (handlers, error) {
 	return handlers{
-		logger: logger,
-		user:   user,
-		group:  group,
-		hub:    hub,
-		record: record,
+		logger:      logger,
+		user:        user,
+		group:       group,
+		hub:         hub,
+		record:      record,
+		application: application,
 	}, nil
 }
 
 type handlers struct {
 	logger logger.Logger
 
-	user   user.User
-	group  group.Group
-	hub    hub.Hub
-	record record.Record
+	user        user.User
+	group       group.Group
+	hub         hub.Hub
+	record      records.Records
+	application application.Application
 }
 
 func (h *handlers) RegisterUser() gin.HandlerFunc {
@@ -87,6 +91,8 @@ func (h *handlers) RegisterUser() gin.HandlerFunc {
 		})
 	}
 }
+
+// personal
 
 func (h *handlers) Me() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -136,32 +142,6 @@ func (h *handlers) MyGroups() gin.HandlerFunc {
 	}
 }
 
-func (h *handlers) AssignFriends() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		ui := auth.FromContext(ctx)
-
-		subjects := c.PostFormArray("friend_subject")
-		if len(subjects) == 0 {
-			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty friend subjects"))
-			return
-		}
-		for _, subject := range subjects {
-			if subject = strings.TrimSpace(subject); subject == "" {
-				WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty friend subject"))
-				return
-			}
-		}
-
-		if err := h.user.AssignFriendsToUser(ctx, ui.Subject, subjects...); err != nil {
-			WrapGinError(c, err)
-			return
-		}
-
-		c.Status(http.StatusOK)
-	}
-}
-
 func (h *handlers) RemoveFriends() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -185,6 +165,121 @@ func (h *handlers) RemoveFriends() gin.HandlerFunc {
 		}
 
 		c.Status(http.StatusOK)
+	}
+}
+
+func (h *handlers) SendFriendRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// POST
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		receiver := c.PostForm("receiver")
+		if receiver = strings.TrimSpace(receiver); receiver == "" {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "invalid receiver: empty"))
+			return
+		}
+
+		if err := h.application.CreateFriendApplication(ctx, ui.Subject, receiver); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func (h *handlers) AgreeFriendRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// PUT
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, errors.New(errors.InvalidArgument, err, "invalid id"))
+			return
+		}
+
+		friendApplication, err := h.application.GetFriendApplication(ctx, id)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if friendApplication.Receiver != ui.Subject {
+			WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你不可以操作该好友申请请求"))
+			return
+		}
+
+		if err = h.application.AgreeFriendApplication(ctx, id); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func (h *handlers) RefuseFriendRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// PUT
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, errors.New(errors.InvalidArgument, err, "invalid id"))
+			return
+		}
+
+		friendApplication, err := h.application.GetFriendApplication(ctx, id)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if friendApplication.Receiver != ui.Subject {
+			WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你不可以操作该好友申请请求"))
+			return
+		}
+
+		if err = h.application.RefuseFriendApplication(ctx, id); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+func (h *handlers) FriendRequestFromMe() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		res, err := h.application.FriendApplicationsFrom(ctx, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+func (h *handlers) FriendRequestToMe() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// GET
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		res, err := h.application.FriendApplicationsTo(ctx, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }
 

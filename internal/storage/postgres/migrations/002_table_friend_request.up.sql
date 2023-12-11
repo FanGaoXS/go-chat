@@ -8,12 +8,13 @@ ALTER TABLE user_friend
     RENAME TO friendship;
 
 
-CREATE TABLE IF NOT EXISTS "friend_request"
+CREATE TABLE IF NOT EXISTS "friend_request_log"
 (
+    id        serial       NOT NULL PRIMARY KEY,
     sender    varchar(256) NOT NULL,
     receiver  varchar(256) NOT NULL,
     status    varchar(256) NOT NULL,
     created_at timestamp   NULL DEFAULT now(),
-    CONSTRAINT friend_request_sender_fk FOREIGN KEY (sender) REFERENCES "user" (subject),
-    CONSTRAINT friend_request_receiver_fk FOREIGN KEY (receiver) REFERENCES "user" (subject)
+    CONSTRAINT friend_request_log_sender_fk FOREIGN KEY (sender) REFERENCES "user" (subject),
+    CONSTRAINT friend_request_log_receiver_fk FOREIGN KEY (receiver) REFERENCES "user" (subject)
 );

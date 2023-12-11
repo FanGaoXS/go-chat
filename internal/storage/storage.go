@@ -16,10 +16,19 @@ type Storage interface {
 	GetUserBySecret(ses Session, username, password string) (*entity.User, error)
 	DeleteUser(ses Session, subject string) error
 
-	InsertFriendship(ses Session, i *entity.Friendship) error
+	InsertFriendship(ses Session, userSubject, friendSubject string) error
 	IsFriendOfUser(ses Session, userSubject, friendSubject string) (bool, error)
 	ListFriendshipsByUserSubject(ses Session, userSubject string) ([]*entity.Friendship, error)
 	DeleteFriendship(ses Session, userSubject, friendSubject string) error
+
+	InsertFriendRequestLog(ses Session, i *entity.FriendRequestLog) error
+	ListFriendRequestLogsBySender(ses Session, sender string) ([]*entity.FriendRequestLog, error)
+	ListFriendRequestLogsByReceiver(ses Session, receiver string) ([]*entity.FriendRequestLog, error)
+	GetFriendRequestLogByID(ses Session, id int64) (*entity.FriendRequestLog, error)
+	GetPendingFriendRequestLog(ses Session, sender, receiver string) (*entity.FriendRequestLog, error)
+	GetFriendRequestLogByIDForUpdate(ses Session, id int64) (*entity.FriendRequestLog, error)
+	GetPendingFriendRequestLogForUpdate(ses Session, sender, receiver string) (*entity.FriendRequestLog, error)
+	UpdateFriendRequestLogStatus(ses Session, id int64, status entity.FriendRequestLogStatus) error
 
 	InsertGroup(ses Session, i *entity.Group) (int64, error)
 	GetGroupByID(ses Session, id int64) (*entity.Group, error)

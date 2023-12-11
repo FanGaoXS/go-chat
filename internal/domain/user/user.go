@@ -25,7 +25,6 @@ type User interface {
 	AllUsers(ctx context.Context) ([]*entity.User, error)
 
 	IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error)
-	AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error
 	RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error
 	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
 }
@@ -116,46 +115,6 @@ func (u *user) IsFriendOfUser(ctx context.Context, userSubject, friendSubject st
 	}
 
 	return ok, nil
-}
-
-func (u *user) AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error {
-	ses, err := u.storage.NewSession(ctx)
-	if err != nil {
-		return err
-	}
-	ses, err = ses.Begin()
-	if err != nil {
-		return err
-	}
-
-	for _, fs := range friendSubject {
-		if userSubject == fs {
-			return errors.New(errors.InvalidArgument, nil, "不可以添加自己为好友")
-		}
-
-		uf := &entity.Friendship{
-			UserSubject:   userSubject,
-			FriendSubject: fs,
-		}
-		if err = u.storage.InsertFriendship(ses, uf); err != nil {
-			return err
-		}
-
-		// TODO: 双向好友，好友申请
-
-		uf = &entity.Friendship{
-			UserSubject:   fs,
-			FriendSubject: userSubject,
-		}
-		if err = u.storage.InsertFriendship(ses, uf); err != nil {
-			return err
-		}
-	}
-
-	if err = ses.Commit(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (u *user) RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error {

@@ -1,4 +1,4 @@
-package record
+package records
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"fangaoxs.com/go-chat/internal/storage"
 )
 
-type Record interface {
+type Records interface {
 	InsertRecordBroadcast(ctx context.Context, sender, content string) error
 	InsertRecordGroup(ctx context.Context, sender, content string, groupID int64) error
 	InsertRecordPrivate(ctx context.Context, sender, content, receiver string) error
@@ -21,20 +21,20 @@ type Record interface {
 	ListRecordPrivate(ctx context.Context, sender, receiver string) ([]*entity.RecordPrivate, error)
 }
 
-func New(env environment.Env, logger logger.Logger, storage storage.Storage) (Record, error) {
-	return &record{
+func New(env environment.Env, logger logger.Logger, storage storage.Storage) (Records, error) {
+	return &records{
 		logger:  logger,
 		storage: storage,
 	}, nil
 }
 
-type record struct {
+type records struct {
 	logger logger.Logger
 
 	storage storage.Storage
 }
 
-func (r *record) InsertRecordBroadcast(ctx context.Context, sender, content string) error {
+func (r *records) InsertRecordBroadcast(ctx context.Context, sender, content string) error {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (r *record) InsertRecordBroadcast(ctx context.Context, sender, content stri
 	return nil
 }
 
-func (r *record) InsertRecordGroup(ctx context.Context, sender, content string, groupID int64) error {
+func (r *records) InsertRecordGroup(ctx context.Context, sender, content string, groupID int64) error {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (r *record) InsertRecordGroup(ctx context.Context, sender, content string, 
 	return nil
 }
 
-func (r *record) InsertRecordPrivate(ctx context.Context, sender, content, receiver string) error {
+func (r *records) InsertRecordPrivate(ctx context.Context, sender, content, receiver string) error {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (r *record) InsertRecordPrivate(ctx context.Context, sender, content, recei
 	return nil
 }
 
-func (r *record) ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordBroadcast, error) {
+func (r *records) ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordBroadcast, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (r *record) ListAllRecordBroadcasts(ctx context.Context) ([]*entity.RecordB
 	return res, nil
 }
 
-func (r *record) ListRecordBroadcastsBySender(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error) {
+func (r *records) ListRecordBroadcastsBySender(ctx context.Context, sender string) ([]*entity.RecordBroadcast, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (r *record) ListRecordBroadcastsBySender(ctx context.Context, sender string
 }
 
 // ListRecordGroups 查询groupID群的群聊记录，当且仅当groupID存在时
-func (r *record) ListRecordGroups(ctx context.Context, groupID int64) ([]*entity.RecordGroup, error) {
+func (r *records) ListRecordGroups(ctx context.Context, groupID int64) ([]*entity.RecordGroup, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (r *record) ListRecordGroups(ctx context.Context, groupID int64) ([]*entity
 }
 
 // ListRecordPrivate 查询subject1和subject2的私聊记录，当且仅当subject1和subject2存在时
-func (r *record) ListRecordPrivate(ctx context.Context, subject1, subject2 string) ([]*entity.RecordPrivate, error) {
+func (r *records) ListRecordPrivate(ctx context.Context, subject1, subject2 string) ([]*entity.RecordPrivate, error) {
 	ses, err := r.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err

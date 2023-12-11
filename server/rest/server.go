@@ -7,9 +7,10 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
+	"fangaoxs.com/go-chat/internal/domain/application"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
-	"fangaoxs.com/go-chat/internal/domain/record"
+	"fangaoxs.com/go-chat/internal/domain/records"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
@@ -24,9 +25,10 @@ func New(
 	user user.User,
 	group group.Group,
 	hub hub.Hub,
-	record record.Record,
+	record records.Records,
+	application application.Application,
 ) (*Server, error) {
-	hdls, err := newHandlers(env, logger, user, group, hub, record)
+	hdls, err := newHandlers(env, logger, user, group, hub, record, application)
 	if err != nil {
 		return nil, fmt.Errorf("create rest handlers failed: %w", err)
 	}
@@ -37,10 +39,14 @@ func New(
 	p := v1.Group("personal", AuthMiddleware(authorizer))
 	{
 		p.GET("me", hdls.Me())
+		p.POST("sendFriendRequest", hdls.SendFriendRequest())
+		p.PUT("agreeFriendRequest/:id", hdls.AgreeFriendRequest())
+		p.PUT("refuseFriendRequest/:id", hdls.RefuseFriendRequest())
+		p.GET("friendRequestFromMe", hdls.FriendRequestFromMe())
+		p.GET("friendRequestToMe", hdls.FriendRequestToMe())
 		p.GET("myFriends", hdls.MyFriends())
-		p.GET("myGroups", hdls.MyGroups())
-		p.PUT("assignFriends", hdls.AssignFriends())
 		p.DELETE("removeFriends", hdls.RemoveFriends())
+		p.GET("myGroups", hdls.MyGroups())
 	}
 
 	g := v1.Group("group", AuthMiddleware(authorizer))
