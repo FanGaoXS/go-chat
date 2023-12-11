@@ -6,7 +6,7 @@ package server
 import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
-	"fangaoxs.com/go-chat/internal/domain/application"
+	"fangaoxs.com/go-chat/internal/domain/applications"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/records"
 	"fangaoxs.com/go-chat/internal/domain/user"
@@ -23,7 +23,7 @@ func initServer(env environment.Env, logger logger.Logger, httpServer *gin.Engin
 		user.New,
 		group.New,
 		records.New,
-		application.New,
+		applications.New,
 		auth.NewAuthorizer,
 		newServer,
 	))

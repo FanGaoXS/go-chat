@@ -7,7 +7,7 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
-	"fangaoxs.com/go-chat/internal/domain/application"
+	"fangaoxs.com/go-chat/internal/domain/applications"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
 	"fangaoxs.com/go-chat/internal/domain/records"
@@ -26,7 +26,7 @@ func newHandlers(
 	group group.Group,
 	hub hub.Hub,
 	record records.Records,
-	application application.Application,
+	application applications.Applications,
 ) (handlers, error) {
 	return handlers{
 		logger:      logger,
@@ -45,7 +45,7 @@ type handlers struct {
 	group       group.Group
 	hub         hub.Hub
 	record      records.Records
-	application application.Application
+	application applications.Applications
 }
 
 func (h *handlers) RegisterUser() gin.HandlerFunc {

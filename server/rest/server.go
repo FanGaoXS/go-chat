@@ -7,7 +7,7 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
-	"fangaoxs.com/go-chat/internal/domain/application"
+	"fangaoxs.com/go-chat/internal/domain/applications"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
 	"fangaoxs.com/go-chat/internal/domain/records"
@@ -26,7 +26,7 @@ func New(
 	group group.Group,
 	hub hub.Hub,
 	record records.Records,
-	application application.Application,
+	application applications.Applications,
 ) (*Server, error) {
 	hdls, err := newHandlers(env, logger, user, group, hub, record, application)
 	if err != nil {

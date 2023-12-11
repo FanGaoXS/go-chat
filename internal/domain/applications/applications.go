@@ -1,4 +1,4 @@
-package application
+package applications
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"fangaoxs.com/go-chat/internal/storage"
 )
 
-type Application interface {
+type Applications interface {
 	CreateFriendApplication(ctx context.Context, sender, receiver string) error
 	AgreeFriendApplication(ctx context.Context, id int64) error
 	RefuseFriendApplication(ctx context.Context, id int64) error
@@ -20,15 +20,15 @@ type Application interface {
 	FriendApplicationsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
 }
 
-func New(env environment.Env, logger logger.Logger, storage storage.Storage) (Application, error) {
-	return &application{storage: storage}, nil
+func New(env environment.Env, logger logger.Logger, storage storage.Storage) (Applications, error) {
+	return &applications{storage: storage}, nil
 }
 
-type application struct {
+type applications struct {
 	storage storage.Storage
 }
 
-func (a *application) CreateFriendApplication(ctx context.Context, sender, receiver string) error {
+func (a *applications) CreateFriendApplication(ctx context.Context, sender, receiver string) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (a *application) CreateFriendApplication(ctx context.Context, sender, recei
 	return nil
 }
 
-func (a *application) AgreeFriendApplication(ctx context.Context, id int64) error {
+func (a *applications) AgreeFriendApplication(ctx context.Context, id int64) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func (a *application) AgreeFriendApplication(ctx context.Context, id int64) erro
 	return nil
 }
 
-func (a *application) RefuseFriendApplication(ctx context.Context, id int64) error {
+func (a *applications) RefuseFriendApplication(ctx context.Context, id int64) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func (a *application) RefuseFriendApplication(ctx context.Context, id int64) err
 	return nil
 }
 
-func (a *application) GetFriendApplication(ctx context.Context, id int64) (*entity.FriendRequestLog, error) {
+func (a *applications) GetFriendApplication(ctx context.Context, id int64) (*entity.FriendRequestLog, error) {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (a *application) GetFriendApplication(ctx context.Context, id int64) (*enti
 	return res, nil
 }
 
-func (a *application) FriendApplicationsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
+func (a *applications) FriendApplicationsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (a *application) FriendApplicationsFrom(ctx context.Context, subject string
 	return res, nil
 }
 
-func (a *application) FriendApplicationsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
+func (a *applications) FriendApplicationsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err

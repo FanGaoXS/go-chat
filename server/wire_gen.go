@@ -9,7 +9,7 @@ package server
 import (
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
-	"fangaoxs.com/go-chat/internal/domain/application"
+	"fangaoxs.com/go-chat/internal/domain/applications"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/records"
 	"fangaoxs.com/go-chat/internal/domain/user"
@@ -41,11 +41,11 @@ func initServer(env environment.Env, logger2 logger.Logger, httpServer *gin.Engi
 	if err != nil {
 		return nil, err
 	}
-	applicationApplication, err := application.New(env, logger2, storage)
+	applicationsApplications, err := applications.New(env, logger2, storage)
 	if err != nil {
 		return nil, err
 	}
-	server, err := newServer(env, logger2, httpServer, authorizer, userUser, groupGroup, recordsRecords, applicationApplication)
+	server, err := newServer(env, logger2, httpServer, authorizer, userUser, groupGroup, recordsRecords, applicationsApplications)
 	if err != nil {
 		return nil, err
 	}

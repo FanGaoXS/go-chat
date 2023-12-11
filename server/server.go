@@ -5,7 +5,7 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
-	"fangaoxs.com/go-chat/internal/domain/application"
+	"fangaoxs.com/go-chat/internal/domain/applications"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
 	"fangaoxs.com/go-chat/internal/domain/records"
@@ -39,7 +39,7 @@ func newServer(
 	user user.User,
 	group group.Group,
 	record records.Records,
-	application application.Application,
+	application applications.Applications,
 ) (*Server, error) {
 	hb, err := hub.NewHub(env, logger, record, group)
 	if err != nil {
