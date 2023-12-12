@@ -5,49 +5,68 @@ import (
 	"time"
 )
 
+type LogsStatus int
+
+const (
+	LogsStatusPending LogsStatus = iota
+	LogsStatusAgreed
+	LogsStatusRefused
+)
+
+var logsStatusString = map[LogsStatus]string{
+	LogsStatusPending: "待处理",
+	LogsStatusAgreed:  "已接受",
+	LogsStatusRefused: "已拒绝",
+}
+
+var logsStatusID = map[string]LogsStatus{
+	"待处理": LogsStatusPending,
+	"已接受": LogsStatusAgreed,
+	"已拒绝": LogsStatusRefused,
+}
+
+func (f LogsStatus) String() string {
+	return logsStatusString[f]
+}
+
+func (f LogsStatus) Value() (driver.Value, error) {
+	return logsStatusString[f], nil
+}
+
+func (f *LogsStatus) Scan(value interface{}) error {
+	*f = logsStatusID[value.(string)]
+	return nil
+}
+
+func LogsStatusFromString(s string) (LogsStatus, bool) {
+	v, ok := logsStatusID[s]
+	return v, ok
+}
+
 type FriendRequestLog struct {
-	ID       int64                  `json:"id"`
-	Sender   string                 `json:"sender"`
-	Receiver string                 `json:"receiver"`
-	Status   FriendRequestLogStatus `json:"status"`
+	ID       int64      `json:"id"`
+	Sender   string     `json:"sender"`
+	Receiver string     `json:"receiver"`
+	Status   LogsStatus `json:"status"`
 
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type FriendRequestLogStatus int
+type GroupInvitationLog struct {
+	ID       int64      `json:"id"`
+	GroupID  int64      `json:"group_id"`
+	Sender   string     `json:"sender"`
+	Receiver string     `json:"receiver"`
+	Status   LogsStatus `json:"status"`
 
-const (
-	FriendRequestLogStatusPending FriendRequestLogStatus = iota
-	FriendRequestLogStatusAgreed
-	FriendRequestLogStatusRefused
-)
-
-var friendRequestLogStatusString = map[FriendRequestLogStatus]string{
-	FriendRequestLogStatusPending: "待处理",
-	FriendRequestLogStatusAgreed:  "已接受",
-	FriendRequestLogStatusRefused: "已拒绝",
+	CreatedAt time.Time `json:"created_at"`
 }
 
-var friendRequestLogStatusID = map[string]FriendRequestLogStatus{
-	"待处理": FriendRequestLogStatusPending,
-	"已接受": FriendRequestLogStatusAgreed,
-	"已拒绝": FriendRequestLogStatusRefused,
-}
+type GroupRequestLog struct {
+	ID      int64      `json:"id"`
+	GroupID int64      `json:"group_id"`
+	Sender  string     `json:"sender"`
+	Status  LogsStatus `json:"status"`
 
-func (f FriendRequestLogStatus) String() string {
-	return friendRequestLogStatusString[f]
-}
-
-func (f FriendRequestLogStatus) Value() (driver.Value, error) {
-	return friendRequestLogStatusString[f], nil
-}
-
-func (f *FriendRequestLogStatus) Scan(value interface{}) error {
-	*f = friendRequestLogStatusID[value.(string)]
-	return nil
-}
-
-func FriendRequestLogStatusFromString(s string) (FriendRequestLogStatus, bool) {
-	v, ok := friendRequestLogStatusID[s]
-	return v, ok
+	CreatedAt time.Time `json:"created_at"`
 }

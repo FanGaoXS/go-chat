@@ -39,14 +39,24 @@ func New(
 	p := v1.Group("personal", AuthMiddleware(authorizer))
 	{
 		p.GET("me", hdls.Me())
+
+		p.GET("myFriends", hdls.MyFriends())
+		p.DELETE("removeFriends", hdls.RemoveFriends())
 		p.POST("sendFriendRequest", hdls.SendFriendRequest())
 		p.PUT("agreeFriendRequest/:id", hdls.AgreeFriendRequest())
 		p.PUT("refuseFriendRequest/:id", hdls.RefuseFriendRequest())
 		p.GET("friendRequestFromMe", hdls.FriendRequestFromMe())
 		p.GET("friendRequestToMe", hdls.FriendRequestToMe())
-		p.GET("myFriends", hdls.MyFriends())
-		p.DELETE("removeFriends", hdls.RemoveFriends())
+
 		p.GET("myGroups", hdls.MyGroups())
+		p.DELETE("exitGroup/:id", hdls.ExitGroup())
+
+		p.GET("groupRequestsFromMe")
+		p.POST("sendGroupRequest", hdls.SendGroupRequest())
+
+		p.GET("groupInvitationsToMe")
+		p.PUT("agreeGroupInvitation/:id", hdls.AgreeGroupInvitation())
+		p.PUT("refuseGroupInvitation/:id", hdls.RefuseGroupInvitation())
 	}
 
 	g := v1.Group("group", AuthMiddleware(authorizer))
@@ -56,12 +66,19 @@ func New(
 		g.DELETE(":id", hdls.DeleteGroup())
 		g.PUT("toPublic/:id", hdls.MakeGroupPublic())
 		g.PUT("toPrivate/:id", hdls.MakeGroupPrivate())
-		g.PUT("assignMembers/:id", hdls.AssignMembersToGroup())
-		g.PUT("removeMembers/:id", hdls.RemoveMembersFromGroup())
-		g.PUT("assignAdmins/:id", hdls.AssignAdminsToGroup())
-		g.PUT("removeAdmins/:id", hdls.RemoveAdminsFromGroup())
+
 		g.GET("members/:id", hdls.MembersOfGroup())
+		g.PUT("removeMembers/:id", hdls.RemoveMembersFromGroup())
+
 		g.GET("admins/:id", hdls.AdminsOfGroup())
+		g.PUT("removeAdmins/:id", hdls.RemoveAdminsFromGroup())
+		g.PUT("assignAdmins/:id", hdls.AssignAdminsToGroup())
+
+		g.POST("sendGroupInvitation", hdls.SendGroupInvitation())
+
+		g.GET("groupRequestsToGroup/:id")
+		g.PUT("agreeGroupRequest/:id", hdls.AgreeGroupRequest())
+		g.PUT("refuseGroupRequest/:id", hdls.RefuseGroupRequest())
 	}
 
 	r := v1.Group("record", AuthMiddleware(authorizer))

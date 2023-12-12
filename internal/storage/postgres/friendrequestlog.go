@@ -52,7 +52,7 @@ func (p *postgres) listFriendRequestLogs(ses storage.Session, where *entity.Wher
 	sqlstr = rebind(sqlstr)
 	rows, err := ses.Query(sqlstr, args...)
 	if err != nil {
-		return nil, wrapPGErrorf(err, "failed to list friend requests")
+		return nil, wrapPGErrorf(err, "failed to list friend request logs")
 	}
 	defer rows.Close()
 
@@ -60,7 +60,7 @@ func (p *postgres) listFriendRequestLogs(ses storage.Session, where *entity.Wher
 	for rows.Next() {
 		r := entity.FriendRequestLog{}
 		if err = rows.Scan(&r.ID, &r.Sender, &r.Receiver, &r.Status, &r.CreatedAt); err != nil {
-			return nil, wrapPGErrorf(err, "failed to scan friend request")
+			return nil, wrapPGErrorf(err, "failed to scan friend request log")
 		}
 		res = append(res, &r)
 	}
@@ -99,7 +99,7 @@ func (p *postgres) ListFriendRequestLogsByReceiver(ses storage.Session, receiver
 func (p *postgres) GetPendingFriendRequestLog(ses storage.Session, sender, receiver string) (*entity.FriendRequestLog, error) {
 	w := &entity.Where{
 		FieldNames:  []string{"sender", "receiver", "status"},
-		FieldValues: []any{sender, receiver, entity.FriendRequestLogStatusPending},
+		FieldValues: []any{sender, receiver, entity.LogsStatusPending},
 	}
 
 	res, err := p.listFriendRequestLogs(ses, w)
@@ -155,7 +155,7 @@ func (p *postgres) GetPendingFriendRequestLogForUpdate(ses storage.Session, send
 
 	var res entity.FriendRequestLog
 	var err error
-	err = ses.QueryRow(sqlstr, sender, receiver, entity.FriendRequestLogStatusPending).Scan(
+	err = ses.QueryRow(sqlstr, sender, receiver, entity.LogsStatusPending).Scan(
 		&res.ID, &res.Sender, &res.Receiver, &res.Status, &res.CreatedAt,
 	)
 	if err != nil {
@@ -165,7 +165,7 @@ func (p *postgres) GetPendingFriendRequestLogForUpdate(ses storage.Session, send
 	return &res, nil
 }
 
-func (p *postgres) UpdateFriendRequestLogStatus(ses storage.Session, id int64, status entity.FriendRequestLogStatus) error {
+func (p *postgres) UpdateFriendRequestLogStatus(ses storage.Session, id int64, status entity.LogsStatus) error {
 	sqlstr := rebind(`UPDATE "friend_request_log" SET status = ? WHERE id = ?;`)
 	_, err := ses.Exec(sqlstr, status, id)
 	if err != nil {

@@ -2,7 +2,6 @@ package applications
 
 import (
 	"context"
-
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
@@ -11,13 +10,31 @@ import (
 )
 
 type Applications interface {
-	CreateFriendApplication(ctx context.Context, sender, receiver string) error
-	AgreeFriendApplication(ctx context.Context, id int64) error
-	RefuseFriendApplication(ctx context.Context, id int64) error
+	// FriendRequest 好友申请
 
-	GetFriendApplication(ctx context.Context, id int64) (*entity.FriendRequestLog, error)
-	FriendApplicationsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
-	FriendApplicationsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
+	CreateFriendRequest(ctx context.Context, sender, receiver string) error
+	AgreeFriendRequest(ctx context.Context, id int64) error
+	RefuseFriendRequest(ctx context.Context, id int64) error
+	GetFriendRequest(ctx context.Context, id int64) (*entity.FriendRequestLog, error)
+	FriendRequestsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
+	FriendRequestsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
+
+	// GroupInvitation 邀请入群
+
+	CreateGroupInvitation(ctx context.Context, sender, receiver string, groupID int64) error
+	AgreeGroupInvitation(ctx context.Context, id int64) error
+	RefuseGroupInvitation(ctx context.Context, id int64) error
+	GetGroupInvitation(ctx context.Context, id int64) (*entity.GroupInvitationLog, error)
+	GroupInvitationsTo(ctx context.Context, receiver string) ([]*entity.GroupInvitationLog, error)
+
+	// GroupRequest 申请加群
+
+	CreateGroupRequest(ctx context.Context, sender string, groupID int64) error
+	AgreeGroupRequest(ctx context.Context, id int64) error
+	RefuseGroupRequest(ctx context.Context, id int64) error
+	GetGroupRequest(ctx context.Context, id int64) (*entity.GroupRequestLog, error)
+	GroupRequestsFrom(ctx context.Context, sender string) ([]*entity.GroupRequestLog, error)
+	GroupRequestsTo(ctx context.Context, groupID int64) ([]*entity.GroupRequestLog, error)
 }
 
 func New(env environment.Env, logger logger.Logger, storage storage.Storage) (Applications, error) {
@@ -28,7 +45,7 @@ type applications struct {
 	storage storage.Storage
 }
 
-func (a *applications) CreateFriendApplication(ctx context.Context, sender, receiver string) error {
+func (a *applications) CreateFriendRequest(ctx context.Context, sender, receiver string) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -74,11 +91,11 @@ func (a *applications) CreateFriendApplication(ctx context.Context, sender, rece
 	requestlog := &entity.FriendRequestLog{
 		Sender:   sender,
 		Receiver: receiver,
-		Status:   entity.FriendRequestLogStatusPending,
+		Status:   entity.LogsStatusPending,
 	}
 
 	if got != nil {
-		if err = a.storage.UpdateFriendRequestLogStatus(ses, got.ID, entity.FriendRequestLogStatusAgreed); err != nil {
+		if err = a.storage.UpdateFriendRequestLogStatus(ses, got.ID, entity.LogsStatusAgreed); err != nil {
 			return err
 		}
 
@@ -88,7 +105,7 @@ func (a *applications) CreateFriendApplication(ctx context.Context, sender, rece
 		if err = a.storage.InsertFriendship(ses, receiver, sender); err != nil {
 			return err
 		}
-		requestlog.Status = entity.FriendRequestLogStatusAgreed
+		requestlog.Status = entity.LogsStatusAgreed
 	}
 
 	if err = a.storage.InsertFriendRequestLog(ses, requestlog); err != nil {
@@ -101,7 +118,7 @@ func (a *applications) CreateFriendApplication(ctx context.Context, sender, rece
 	return nil
 }
 
-func (a *applications) AgreeFriendApplication(ctx context.Context, id int64) error {
+func (a *applications) AgreeFriendRequest(ctx context.Context, id int64) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -115,10 +132,10 @@ func (a *applications) AgreeFriendApplication(ctx context.Context, id int64) err
 	if err != nil {
 		return err
 	}
-	if requsetlog.Status != entity.FriendRequestLogStatusPending {
+	if requsetlog.Status != entity.LogsStatusPending {
 		return errors.Newf(errors.InvalidArgument, nil, "好友申请请求已经被处理")
 	}
-	err = a.storage.UpdateFriendRequestLogStatus(ses, id, entity.FriendRequestLogStatusAgreed)
+	err = a.storage.UpdateFriendRequestLogStatus(ses, id, entity.LogsStatusAgreed)
 	if err != nil {
 		return err
 	}
@@ -136,7 +153,7 @@ func (a *applications) AgreeFriendApplication(ctx context.Context, id int64) err
 	return nil
 }
 
-func (a *applications) RefuseFriendApplication(ctx context.Context, id int64) error {
+func (a *applications) RefuseFriendRequest(ctx context.Context, id int64) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -150,10 +167,10 @@ func (a *applications) RefuseFriendApplication(ctx context.Context, id int64) er
 	if err != nil {
 		return err
 	}
-	if requsetlog.Status != entity.FriendRequestLogStatusPending {
+	if requsetlog.Status != entity.LogsStatusPending {
 		return errors.Newf(errors.InvalidArgument, nil, "该好友申请请求已经被处理")
 	}
-	err = a.storage.UpdateFriendRequestLogStatus(ses, id, entity.FriendRequestLogStatusRefused)
+	err = a.storage.UpdateFriendRequestLogStatus(ses, id, entity.LogsStatusRefused)
 	if err != nil {
 		return err
 	}
@@ -164,7 +181,7 @@ func (a *applications) RefuseFriendApplication(ctx context.Context, id int64) er
 	return nil
 }
 
-func (a *applications) GetFriendApplication(ctx context.Context, id int64) (*entity.FriendRequestLog, error) {
+func (a *applications) GetFriendRequest(ctx context.Context, id int64) (*entity.FriendRequestLog, error) {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -178,7 +195,7 @@ func (a *applications) GetFriendApplication(ctx context.Context, id int64) (*ent
 	return res, nil
 }
 
-func (a *applications) FriendApplicationsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
+func (a *applications) FriendRequestsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -195,7 +212,7 @@ func (a *applications) FriendApplicationsFrom(ctx context.Context, subject strin
 	return res, nil
 }
 
-func (a *applications) FriendApplicationsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
+func (a *applications) FriendRequestsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error) {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return nil, err
@@ -207,6 +224,381 @@ func (a *applications) FriendApplicationsTo(ctx context.Context, subject string)
 	}
 	if len(res) == 0 {
 		return nil, errors.Newf(errors.NotFound, nil, "no friend applications to %s", subject)
+	}
+
+	return res, nil
+}
+
+func (a *applications) CreateGroupInvitation(ctx context.Context, sender, receiver string, groupID int64) error {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	if sender == receiver {
+		return errors.Newf(errors.InvalidArgument, nil, "不可以邀请自己入群")
+	}
+
+	_, err = a.storage.GetUserBySubject(ses, receiver)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.storage.GetGroupByID(ses, groupID)
+	if err != nil {
+		return err
+	}
+
+	ok, err := a.storage.IsMemberOfGroup(ses, receiver, groupID)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return errors.Newf(errors.AlreadyExists, nil, "[%s]已经是群[%d]成员了", receiver, groupID)
+	}
+
+	got, err := a.storage.GetPendingGroupInvitationLog(ses, groupID, receiver)
+	if err != nil && errors.Code(err) != errors.NotFound {
+		return err
+	}
+	if got != nil {
+		return errors.Newf(errors.AlreadyExists, nil, "已经存在[%s]发送给[%s]的邀请加入群[%d]的未处理请求", got.Sender, receiver, groupID)
+	}
+
+	// 不存在sender发送给receiver的邀请入groupID群的请求
+
+	// 检查是否已经有receiver发送给groupID的且pending的入群，如果有，则直接双向同意
+	forupdate, err := a.storage.GetPendingGroupRequestLogForUpdate(ses, groupID, receiver)
+	if err != nil && errors.Code(err) != errors.NotFound {
+		return err
+	}
+
+	insert := &entity.GroupInvitationLog{
+		GroupID:  groupID,
+		Sender:   sender,
+		Receiver: receiver,
+		Status:   entity.LogsStatusPending,
+	}
+
+	if got != nil {
+		if err = a.storage.UpdateGroupRequestLogStatus(ses, forupdate.ID, entity.LogsStatusAgreed); err != nil {
+			return err
+		}
+
+		e := &entity.GroupMember{
+			UserSubject: receiver,
+			GroupID:     groupID,
+			IsAdmin:     false,
+		}
+		if err = a.storage.InsertGroupMember(ses, e); err != nil {
+			return err
+		}
+		insert.Status = entity.LogsStatusAgreed
+	}
+
+	if err = a.storage.InsertGroupInvitationLog(ses, insert); err != nil {
+		return err
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *applications) AgreeGroupInvitation(ctx context.Context, id int64) error {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	forupdate, err := a.storage.GetGroupInvitationLogByIDForUpdate(ses, id)
+	if err != nil {
+		return err
+	}
+	if forupdate.Status != entity.LogsStatusPending {
+		return errors.Newf(errors.InvalidArgument, nil, "邀请入群已经被处理")
+	}
+	if err = a.storage.UpdateGroupInvitationLogStatus(ses, id, entity.LogsStatusAgreed); err != nil {
+		return err
+	}
+
+	i := &entity.GroupMember{
+		UserSubject: forupdate.Receiver,
+		GroupID:     forupdate.GroupID,
+		IsAdmin:     false,
+	}
+	if err = a.storage.InsertGroupMember(ses, i); err != nil {
+		return err
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *applications) RefuseGroupInvitation(ctx context.Context, id int64) error {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	forupdate, err := a.storage.GetGroupInvitationLogByIDForUpdate(ses, id)
+	if err != nil {
+		return err
+	}
+	if forupdate.Status != entity.LogsStatusPending {
+		return errors.Newf(errors.InvalidArgument, nil, "邀请入群已经被处理")
+	}
+	err = a.storage.UpdateGroupInvitationLogStatus(ses, id, entity.LogsStatusRefused)
+	if err != nil {
+		return err
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *applications) GetGroupInvitation(ctx context.Context, id int64) (*entity.GroupInvitationLog, error) {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.storage.GetGroupInvitationLog(ses, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (a *applications) GroupInvitationsFrom(ctx context.Context, sender string) ([]*entity.GroupInvitationLog, error) {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.storage.ListGroupInvitationLogsBySender(ses, sender)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "no invitations from [%s] found", sender)
+	}
+
+	return res, nil
+}
+
+func (a *applications) GroupInvitationsTo(ctx context.Context, receiver string) ([]*entity.GroupInvitationLog, error) {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.storage.ListGroupInvitationLogsByReceiver(ses, receiver)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "no invitations to [%s] found", receiver)
+	}
+
+	return res, nil
+}
+
+func (a *applications) CreateGroupRequest(ctx context.Context, sender string, groupID int64) error {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = a.storage.GetGroupByID(ses, groupID)
+	if err != nil {
+		return err
+	}
+
+	ok, err := a.storage.IsMemberOfGroup(ses, sender, groupID)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return errors.Newf(errors.AlreadyExists, nil, "[%s]已经是群[%d]成员了", sender, groupID)
+	}
+
+	got, err := a.storage.GetPendingGroupRequestLog(ses, groupID, sender)
+	if err != nil && errors.Code(err) != errors.NotFound {
+		return err
+	}
+	if got != nil {
+		return errors.Newf(errors.AlreadyExists, nil, "已经存在[%s]发送给群[%d]的申请入群请求了", sender, groupID)
+	}
+
+	// 不存在sender发送给groupID群的入群请求
+
+	// 检查是否已经有group邀请sender的且pending的入群请求，如果有，则双向同意
+	forUpdate, err := a.storage.GetPendingGroupInvitationLogForUpdate(ses, groupID, sender)
+	if err != nil && errors.Code(err) != errors.NotFound {
+		return err
+	}
+
+	insert := &entity.GroupRequestLog{
+		GroupID: groupID,
+		Sender:  sender,
+		Status:  entity.LogsStatusPending,
+	}
+
+	if got != nil {
+		if err = a.storage.UpdateGroupInvitationLogStatus(ses, forUpdate.ID, entity.LogsStatusAgreed); err != nil {
+			return err
+		}
+
+		e := &entity.GroupMember{
+			UserSubject: sender,
+			GroupID:     groupID,
+			IsAdmin:     false,
+		}
+		if err = a.storage.InsertGroupMember(ses, e); err != nil {
+			return err
+		}
+		insert.Status = entity.LogsStatusAgreed
+	}
+
+	if err = a.storage.InsertGroupRequestLog(ses, insert); err != nil {
+		return err
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *applications) AgreeGroupRequest(ctx context.Context, id int64) error {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	forUpdate, err := a.storage.GetGroupRequestLogByIDForUpdate(ses, id)
+	if err != nil {
+		return err
+	}
+	if forUpdate.Status != entity.LogsStatusPending {
+		return errors.Newf(errors.InvalidArgument, nil, "入群申请已经被处理")
+	}
+	if err = a.storage.UpdateGroupRequestLogStatus(ses, id, entity.LogsStatusAgreed); err != nil {
+		return err
+	}
+
+	i := &entity.GroupMember{
+		UserSubject: forUpdate.Sender,
+		GroupID:     forUpdate.GroupID,
+		IsAdmin:     false,
+	}
+	if err = a.storage.InsertGroupMember(ses, i); err != nil {
+		return err
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *applications) RefuseGroupRequest(ctx context.Context, id int64) error {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return err
+	}
+	ses, err = ses.Begin()
+	if err != nil {
+		return err
+	}
+
+	forUpdate, err := a.storage.GetGroupRequestLogByIDForUpdate(ses, id)
+	if err != nil {
+		return err
+	}
+	if forUpdate.Status != entity.LogsStatusPending {
+		return errors.Newf(errors.InvalidArgument, nil, "入群申请已经被处理")
+	}
+	if err = a.storage.UpdateGroupRequestLogStatus(ses, id, entity.LogsStatusRefused); err != nil {
+		return err
+	}
+
+	if err = ses.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *applications) GetGroupRequest(ctx context.Context, id int64) (*entity.GroupRequestLog, error) {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.storage.GetGroupRequestLog(ses, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (a *applications) GroupRequestsFrom(ctx context.Context, sender string) ([]*entity.GroupRequestLog, error) {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.storage.ListGroupRequestLogsBySender(ses, sender)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "no group requests from %s found", sender)
+	}
+
+	return res, nil
+}
+
+func (a *applications) GroupRequestsTo(ctx context.Context, groupID int64) ([]*entity.GroupRequestLog, error) {
+	ses, err := a.storage.NewSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.storage.ListGroupRequestLogsByGroup(ses, groupID)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, errors.Newf(errors.NotFound, nil, "no group requests to group: %d found", groupID)
 	}
 
 	return res, nil
