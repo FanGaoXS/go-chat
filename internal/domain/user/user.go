@@ -7,7 +7,7 @@ import (
 	"fangaoxs.com/go-chat/internal/entity"
 	"fangaoxs.com/go-chat/internal/infras/errors"
 	"fangaoxs.com/go-chat/internal/storage"
-	
+
 	"github.com/google/uuid"
 )
 
@@ -24,10 +24,9 @@ type User interface {
 	DeleteUser(ctx context.Context, subject string) error
 	AllUsers(ctx context.Context) ([]*entity.User, error)
 
-	AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error
+	IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error)
 	RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error
 	ListFriendsOfUser(ctx context.Context, userSubject string) ([]*entity.User, error)
-	IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error)
 }
 
 func New(env environment.Env, storage storage.Storage) (User, error) {
@@ -104,7 +103,21 @@ func (u *user) AllUsers(ctx context.Context) ([]*entity.User, error) {
 	return users, nil
 }
 
-func (u *user) AssignFriendsToUser(ctx context.Context, userSubject string, friendSubject ...string) error {
+func (u *user) IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error) {
+	ses, err := u.storage.NewSession(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	ok, err := u.storage.IsFriendOfUser(ses, userSubject, friendSubject)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
+}
+
+func (u *user) RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error {
 	ses, err := u.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -115,25 +128,10 @@ func (u *user) AssignFriendsToUser(ctx context.Context, userSubject string, frie
 	}
 
 	for _, fs := range friendSubject {
-		if userSubject == fs {
-			return errors.New(errors.InvalidArgument, nil, "不可以添加自己为好友")
-		}
-
-		uf := &entity.UserFriend{
-			UserSubject:   userSubject,
-			FriendSubject: fs,
-		}
-		if err = u.storage.InsertUserFriend(ses, uf); err != nil {
+		if err = u.storage.DeleteFriendship(ses, userSubject, fs); err != nil {
 			return err
 		}
-
-		// TODO: 双向好友，好友申请
-
-		uf = &entity.UserFriend{
-			UserSubject:   fs,
-			FriendSubject: userSubject,
-		}
-		if err = u.storage.InsertUserFriend(ses, uf); err != nil {
+		if err = u.storage.DeleteFriendship(ses, fs, userSubject); err != nil {
 			return err
 		}
 	}
@@ -150,7 +148,7 @@ func (u *user) ListFriendsOfUser(ctx context.Context, userSubject string) ([]*en
 		return nil, err
 	}
 
-	ufs, err := u.storage.ListUserFriendsByUserSubject(ses, userSubject)
+	ufs, err := u.storage.ListFriendshipsByUserSubject(ses, userSubject)
 	if err != nil {
 		return nil, err
 	}
@@ -168,43 +166,4 @@ func (u *user) ListFriendsOfUser(ctx context.Context, userSubject string) ([]*en
 	}
 
 	return friends, nil
-}
-
-func (u *user) RemoveFriendsFromUser(ctx context.Context, userSubject string, friendSubject ...string) error {
-	ses, err := u.storage.NewSession(ctx)
-	if err != nil {
-		return err
-	}
-	ses, err = ses.Begin()
-	if err != nil {
-		return err
-	}
-
-	for _, fs := range friendSubject {
-		if err = u.storage.DeleteUserFriend(ses, userSubject, fs); err != nil {
-			return err
-		}
-		if err = u.storage.DeleteUserFriend(ses, fs, userSubject); err != nil {
-			return err
-		}
-	}
-
-	if err = ses.Commit(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (u *user) IsFriendOfUser(ctx context.Context, userSubject, friendSubject string) (bool, error) {
-	ses, err := u.storage.NewSession(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	ok, err := u.storage.IsFriendOfUser(ses, userSubject, friendSubject)
-	if err != nil {
-		return false, err
-	}
-
-	return ok, nil
 }

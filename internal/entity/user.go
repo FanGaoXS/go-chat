@@ -1,6 +1,8 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
 	Subject  string `json:"subject"`
@@ -12,7 +14,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type UserFriend struct {
+type Friendship struct {
 	UserSubject   string `json:"user_subject"`
 	FriendSubject string `json:"friend_subject"`
 

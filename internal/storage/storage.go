@@ -16,10 +16,37 @@ type Storage interface {
 	GetUserBySecret(ses Session, username, password string) (*entity.User, error)
 	DeleteUser(ses Session, subject string) error
 
-	InsertUserFriend(ses Session, i *entity.UserFriend) error
+	InsertFriendship(ses Session, userSubject, friendSubject string) error
 	IsFriendOfUser(ses Session, userSubject, friendSubject string) (bool, error)
-	ListUserFriendsByUserSubject(ses Session, userSubject string) ([]*entity.UserFriend, error)
-	DeleteUserFriend(ses Session, userSubject, friendSubject string) error
+	ListFriendshipsByUserSubject(ses Session, userSubject string) ([]*entity.Friendship, error)
+	DeleteFriendship(ses Session, userSubject, friendSubject string) error
+
+	InsertFriendRequestLog(ses Session, i *entity.FriendRequestLog) error
+	ListFriendRequestLogsBySender(ses Session, sender string) ([]*entity.FriendRequestLog, error)
+	ListFriendRequestLogsByReceiver(ses Session, receiver string) ([]*entity.FriendRequestLog, error)
+	GetFriendRequestLogByID(ses Session, id int64) (*entity.FriendRequestLog, error)
+	GetPendingFriendRequestLog(ses Session, sender, receiver string) (*entity.FriendRequestLog, error)
+	GetFriendRequestLogByIDForUpdate(ses Session, id int64) (*entity.FriendRequestLog, error)
+	GetPendingFriendRequestLogForUpdate(ses Session, sender, receiver string) (*entity.FriendRequestLog, error)
+	UpdateFriendRequestLogStatus(ses Session, id int64, status entity.LogsStatus) error
+
+	InsertGroupRequestLog(ses Session, i *entity.GroupRequestLog) error
+	ListGroupRequestLogsByGroup(ses Session, groupID int64) ([]*entity.GroupRequestLog, error)
+	ListGroupRequestLogsBySender(ses Session, sender string) ([]*entity.GroupRequestLog, error)
+	GetGroupRequestLog(ses Session, id int64) (*entity.GroupRequestLog, error)
+	GetPendingGroupRequestLog(ses Session, groupID int64, sender string) (*entity.GroupRequestLog, error)
+	GetPendingGroupRequestLogForUpdate(ses Session, groupID int64, sender string) (*entity.GroupRequestLog, error)
+	GetGroupRequestLogByIDForUpdate(ses Session, id int64) (*entity.GroupRequestLog, error)
+	UpdateGroupRequestLogStatus(ses Session, id int64, approver string, status entity.LogsStatus) error
+
+	InsertGroupInvitationLog(ses Session, i *entity.GroupInvitationLog) error
+	ListGroupInvitationLogsByReceiver(ses Session, receiver string) ([]*entity.GroupInvitationLog, error)
+	ListGroupInvitationLogsBySender(ses Session, sender string) ([]*entity.GroupInvitationLog, error)
+	GetGroupInvitationLog(ses Session, id int64) (*entity.GroupInvitationLog, error)
+	GetPendingGroupInvitationLog(ses Session, groupID int64, receiver string) (*entity.GroupInvitationLog, error)
+	GetPendingGroupInvitationLogForUpdate(ses Session, groupID int64, receiver string) (*entity.GroupInvitationLog, error)
+	GetGroupInvitationLogByIDForUpdate(ses Session, id int64) (*entity.GroupInvitationLog, error)
+	UpdateGroupInvitationLogStatus(ses Session, id int64, status entity.LogsStatus) error
 
 	InsertGroup(ses Session, i *entity.Group) (int64, error)
 	GetGroupByID(ses Session, id int64) (*entity.Group, error)

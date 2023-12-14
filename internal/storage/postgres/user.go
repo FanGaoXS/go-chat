@@ -121,26 +121,26 @@ func (p *postgres) DeleteUser(ses storage.Session, subject string) error {
 	return nil
 }
 
-func (p *postgres) InsertUserFriend(ses storage.Session, i *entity.UserFriend) error {
-	sqlstr := rebind(`INSERT INTO "user_friend" 
+func (p *postgres) InsertFriendship(ses storage.Session, userSubject, friendSubject string) error {
+	sqlstr := rebind(`INSERT INTO "friendship" 
                   (user_subject, friend_subject)
                   VALUES
                   (?, ?);`)
 	args := []any{
-		i.UserSubject,
-		i.FriendSubject,
+		userSubject,
+		friendSubject,
 	}
 
 	var err error
 	_, err = ses.Exec(sqlstr, args...)
 	if err != nil {
-		return wrapPGErrorf(err, "failed to insert user friend")
+		return wrapPGErrorf(err, "failed to insert friendship")
 	}
 
 	return nil
 }
 
-func (p *postgres) listUserFriends(ses storage.Session, where *entity.Where) ([]*entity.UserFriend, error) {
+func (p *postgres) listFriendships(ses storage.Session, where *entity.Where) ([]*entity.Friendship, error) {
 	projection := []string{
 		"user_subject",
 		"friend_subject",
@@ -148,7 +148,7 @@ func (p *postgres) listUserFriends(ses storage.Session, where *entity.Where) ([]
 	}
 
 	var args []any
-	sqlstr := fmt.Sprintf(`SELECT %s FROM "user_friend"`, strings.Join(projection, ", "))
+	sqlstr := fmt.Sprintf(`SELECT %s FROM "friendship"`, strings.Join(projection, ", "))
 	if where != nil {
 		sel, selArgs, err := where.Parse()
 		if err != nil {
@@ -161,15 +161,15 @@ func (p *postgres) listUserFriends(ses storage.Session, where *entity.Where) ([]
 	sqlstr = rebind(sqlstr)
 	rows, err := ses.Query(sqlstr, args...)
 	if err != nil {
-		return nil, wrapPGErrorf(err, "failed to list user friends")
+		return nil, wrapPGErrorf(err, "failed to list friendships")
 	}
 	defer rows.Close()
 
-	var res []*entity.UserFriend
+	var res []*entity.Friendship
 	for rows.Next() {
-		r := entity.UserFriend{}
+		r := entity.Friendship{}
 		if err = rows.Scan(&r.UserSubject, &r.FriendSubject, &r.CreatedAt); err != nil {
-			return nil, wrapPGErrorf(err, "failed to scan user friend")
+			return nil, wrapPGErrorf(err, "failed to scan friendship")
 		}
 		res = append(res, &r)
 	}
@@ -182,7 +182,7 @@ func (p *postgres) IsFriendOfUser(ses storage.Session, userSubject, friendSubjec
 		FieldNames:  []string{"user_subject", "friend_subject"},
 		FieldValues: []any{userSubject, friendSubject},
 	}
-	res, err := p.listUserFriends(ses, w)
+	res, err := p.listFriendships(ses, w)
 	if err != nil {
 		return false, wrapPGErrorf(err, "is friend: %s of user: %s failed", friendSubject, userSubject)
 	}
@@ -193,28 +193,28 @@ func (p *postgres) IsFriendOfUser(ses storage.Session, userSubject, friendSubjec
 	return true, nil
 }
 
-func (p *postgres) ListUserFriendsByUserSubject(ses storage.Session, userSubject string) ([]*entity.UserFriend, error) {
+func (p *postgres) ListFriendshipsByUserSubject(ses storage.Session, userSubject string) ([]*entity.Friendship, error) {
 	w := &entity.Where{
 		FieldNames:  []string{"user_subject"},
 		FieldValues: []any{userSubject},
 	}
 
-	res, err := p.listUserFriends(ses, w)
+	res, err := p.listFriendships(ses, w)
 	if err != nil {
-		return nil, wrapPGErrorf(err, "list user friends with user_subject: %s failed", userSubject)
+		return nil, wrapPGErrorf(err, "list friendships with user_subject: %s failed", userSubject)
 	}
 
 	return res, nil
 }
 
-func (p *postgres) DeleteUserFriend(ses storage.Session, userSubject, friendSubject string) error {
-	sqlstr := rebind(`DELETE FROM "user_friend" WHERE user_subject = ? AND friend_subject = ?;`)
+func (p *postgres) DeleteFriendship(ses storage.Session, userSubject, friendSubject string) error {
+	sqlstr := rebind(`DELETE FROM "friendship" WHERE user_subject = ? AND friend_subject = ?;`)
 	args := []any{
 		userSubject,
 		friendSubject,
 	}
 	if _, err := ses.Exec(sqlstr, args...); err != nil {
-		return wrapPGErrorf(err, "delete user friend with user_subject: %s and friend_subject: %s failed", userSubject, friendSubject)
+		return wrapPGErrorf(err, "delete friendship with user_subject: %s and friend_subject: %s failed", userSubject, friendSubject)
 	}
 
 	return nil

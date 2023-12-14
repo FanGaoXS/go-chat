@@ -7,9 +7,10 @@ import (
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/auth"
+	"fangaoxs.com/go-chat/internal/domain/applications"
 	"fangaoxs.com/go-chat/internal/domain/group"
 	"fangaoxs.com/go-chat/internal/domain/hub"
-	"fangaoxs.com/go-chat/internal/domain/record"
+	"fangaoxs.com/go-chat/internal/domain/records"
 	"fangaoxs.com/go-chat/internal/domain/user"
 	"fangaoxs.com/go-chat/internal/infras/logger"
 
@@ -24,9 +25,10 @@ func New(
 	user user.User,
 	group group.Group,
 	hub hub.Hub,
-	record record.Record,
+	record records.Records,
+	application applications.Applications,
 ) (*Server, error) {
-	hdls, err := newHandlers(env, logger, user, group, hub, record)
+	hdls, err := newHandlers(env, logger, user, group, hub, record, application)
 	if err != nil {
 		return nil, fmt.Errorf("create rest handlers failed: %w", err)
 	}
@@ -37,10 +39,24 @@ func New(
 	p := v1.Group("personal", AuthMiddleware(authorizer))
 	{
 		p.GET("me", hdls.Me())
+
 		p.GET("myFriends", hdls.MyFriends())
-		p.GET("myGroups", hdls.MyGroups())
-		p.PUT("assignFriends", hdls.AssignFriends())
 		p.DELETE("removeFriends", hdls.RemoveFriends())
+		p.POST("sendFriendRequest", hdls.SendFriendRequest())
+		p.PUT("agreeFriendRequest/:request_id", hdls.AgreeFriendRequest())
+		p.PUT("refuseFriendRequest/:request_id", hdls.RefuseFriendRequest())
+		p.GET("friendRequestFromMe", hdls.FriendRequestFromMe())
+		p.GET("friendRequestToMe", hdls.FriendRequestToMe())
+
+		p.GET("myGroups", hdls.MyGroups())
+		p.DELETE("exitGroup/:id", hdls.ExitGroup())
+
+		p.GET("groupRequestsFromMe", hdls.GroupRequestFromMe())
+		p.POST("sendGroupRequest", hdls.SendGroupRequest())
+
+		p.GET("groupInvitationsToMe", hdls.GroupInvitationsToMe())
+		p.PUT("agreeGroupInvitation/:invitation_id", hdls.AgreeGroupInvitation())
+		p.PUT("refuseGroupInvitation/:invitation_id", hdls.RefuseGroupInvitation())
 	}
 
 	g := v1.Group("group", AuthMiddleware(authorizer))
@@ -50,12 +66,19 @@ func New(
 		g.DELETE(":id", hdls.DeleteGroup())
 		g.PUT("toPublic/:id", hdls.MakeGroupPublic())
 		g.PUT("toPrivate/:id", hdls.MakeGroupPrivate())
-		g.PUT("assignMembers/:id", hdls.AssignMembersToGroup())
-		g.PUT("removeMembers/:id", hdls.RemoveMembersFromGroup())
-		g.PUT("assignAdmins/:id", hdls.AssignAdminsToGroup())
-		g.PUT("removeAdmins/:id", hdls.RemoveAdminsFromGroup())
+
 		g.GET("members/:id", hdls.MembersOfGroup())
+		g.PUT("removeMembers/:id", hdls.RemoveMembersFromGroup())
+
 		g.GET("admins/:id", hdls.AdminsOfGroup())
+		g.PUT("removeAdmins/:id", hdls.RemoveAdminsFromGroup())
+		g.PUT("assignAdmins/:id", hdls.AssignAdminsToGroup())
+
+		g.POST("sendGroupInvitation", hdls.SendGroupInvitation())
+
+		g.GET("groupRequestsToGroup/:id", hdls.GroupRequestsToGroup())
+		g.PUT("agreeGroupRequest/:request_id", hdls.AgreeGroupRequest())
+		g.PUT("refuseGroupRequest/:request_id", hdls.RefuseGroupRequest())
 	}
 
 	r := v1.Group("record", AuthMiddleware(authorizer))
