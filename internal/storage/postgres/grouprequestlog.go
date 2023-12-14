@@ -11,12 +11,13 @@ import (
 
 func (p *postgres) InsertGroupRequestLog(ses storage.Session, i *entity.GroupRequestLog) error {
 	sqlstr := rebind(`INSERT INTO "group_request_log" 
-                  (group_id, sender, status)
+                  (group_id, sender, approver, status)
                   VALUES
                   (?, ?, ?, ?);`)
 	args := []any{
 		i.GroupID,
 		i.Sender,
+		i.Approver,
 		i.Status,
 	}
 
@@ -34,6 +35,7 @@ func (p *postgres) listGroupRequestLogs(ses storage.Session, where *entity.Where
 		"id",
 		"group_id",
 		"sender",
+		"approver",
 		"status",
 		"created_at",
 	}
@@ -59,7 +61,7 @@ func (p *postgres) listGroupRequestLogs(ses storage.Session, where *entity.Where
 	var res []*entity.GroupRequestLog
 	for rows.Next() {
 		r := entity.GroupRequestLog{}
-		if err = rows.Scan(&r.ID, &r.GroupID, &r.Sender, &r.Status, &r.CreatedAt); err != nil {
+		if err = rows.Scan(&r.ID, &r.GroupID, &r.Sender, &r.Approver, &r.Status, &r.CreatedAt); err != nil {
 			return nil, wrapPGErrorf(err, "failed to scan group request log")
 		}
 		res = append(res, &r)
@@ -137,7 +139,7 @@ func (p *postgres) GetPendingGroupRequestLogForUpdate(ses storage.Session, group
 	var res entity.GroupRequestLog
 	var err error
 	err = ses.QueryRow(sqlstr, groupID, sender, entity.LogsStatusPending).Scan(
-		&res.ID, &res.GroupID, &res.Sender, &res.Status, &res.CreatedAt,
+		&res.ID, &res.GroupID, &res.Sender, &res.Approver, &res.Status, &res.CreatedAt,
 	)
 	if err != nil {
 		return nil, wrapPGErrorf(err, "get pending group request log for update with group_id: %d and sender: %s failed", groupID, sender)
@@ -152,7 +154,7 @@ func (p *postgres) GetGroupRequestLogByIDForUpdate(ses storage.Session, id int64
 	var res entity.GroupRequestLog
 	var err error
 	err = ses.QueryRow(sqlstr, id).Scan(
-		&res.ID, &res.GroupID, &res.Sender, &res.Status, &res.CreatedAt,
+		&res.ID, &res.GroupID, &res.Sender, &res.Approver, &res.Status, &res.CreatedAt,
 	)
 	if err != nil {
 		return nil, wrapPGErrorf(err, "get group request log for update with id: %d failed", id)
@@ -161,11 +163,11 @@ func (p *postgres) GetGroupRequestLogByIDForUpdate(ses storage.Session, id int64
 	return &res, nil
 }
 
-func (p *postgres) UpdateGroupRequestLogStatus(ses storage.Session, id int64, status entity.LogsStatus) error {
-	sqlstr := rebind(`UPDATE "group_request_log" SET status = ? WHERE id = ?;`)
-	_, err := ses.Exec(sqlstr, status, id)
+func (p *postgres) UpdateGroupRequestLogStatus(ses storage.Session, id int64, approver string, status entity.LogsStatus) error {
+	sqlstr := rebind(`UPDATE "group_request_log" SET approver = ?, status = ? WHERE id = ?;`)
+	_, err := ses.Exec(sqlstr, approver, status, id)
 	if err != nil {
-		return wrapPGErrorf(err, "update group request log status with id: %d to %s failed", id, status.String())
+		return wrapPGErrorf(err, "approver: %s update group request log status with id: %d to %s failed", approver, id, status.String())
 	}
 
 	return nil

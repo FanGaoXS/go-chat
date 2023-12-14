@@ -37,7 +37,7 @@ type Storage interface {
 	GetPendingGroupRequestLog(ses Session, groupID int64, sender string) (*entity.GroupRequestLog, error)
 	GetPendingGroupRequestLogForUpdate(ses Session, groupID int64, sender string) (*entity.GroupRequestLog, error)
 	GetGroupRequestLogByIDForUpdate(ses Session, id int64) (*entity.GroupRequestLog, error)
-	UpdateGroupRequestLogStatus(ses Session, id int64, status entity.LogsStatus) error
+	UpdateGroupRequestLogStatus(ses Session, id int64, approver string, status entity.LogsStatus) error
 
 	InsertGroupInvitationLog(ses Session, i *entity.GroupInvitationLog) error
 	ListGroupInvitationLogsByReceiver(ses Session, receiver string) ([]*entity.GroupInvitationLog, error)

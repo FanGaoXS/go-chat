@@ -43,20 +43,20 @@ func New(
 		p.GET("myFriends", hdls.MyFriends())
 		p.DELETE("removeFriends", hdls.RemoveFriends())
 		p.POST("sendFriendRequest", hdls.SendFriendRequest())
-		p.PUT("agreeFriendRequest/:id", hdls.AgreeFriendRequest())
-		p.PUT("refuseFriendRequest/:id", hdls.RefuseFriendRequest())
+		p.PUT("agreeFriendRequest/:request_id", hdls.AgreeFriendRequest())
+		p.PUT("refuseFriendRequest/:request_id", hdls.RefuseFriendRequest())
 		p.GET("friendRequestFromMe", hdls.FriendRequestFromMe())
 		p.GET("friendRequestToMe", hdls.FriendRequestToMe())
 
 		p.GET("myGroups", hdls.MyGroups())
 		p.DELETE("exitGroup/:id", hdls.ExitGroup())
 
-		p.GET("groupRequestsFromMe")
+		p.GET("groupRequestsFromMe", hdls.GroupRequestFromMe())
 		p.POST("sendGroupRequest", hdls.SendGroupRequest())
 
-		p.GET("groupInvitationsToMe")
-		p.PUT("agreeGroupInvitation/:id", hdls.AgreeGroupInvitation())
-		p.PUT("refuseGroupInvitation/:id", hdls.RefuseGroupInvitation())
+		p.GET("groupInvitationsToMe", hdls.GroupInvitationsToMe())
+		p.PUT("agreeGroupInvitation/:invitation_id", hdls.AgreeGroupInvitation())
+		p.PUT("refuseGroupInvitation/:invitation_id", hdls.RefuseGroupInvitation())
 	}
 
 	g := v1.Group("group", AuthMiddleware(authorizer))
@@ -76,9 +76,9 @@ func New(
 
 		g.POST("sendGroupInvitation", hdls.SendGroupInvitation())
 
-		g.GET("groupRequestsToGroup/:id")
-		g.PUT("agreeGroupRequest/:id", hdls.AgreeGroupRequest())
-		g.PUT("refuseGroupRequest/:id", hdls.RefuseGroupRequest())
+		g.GET("groupRequestsToGroup/:id", hdls.GroupRequestsToGroup())
+		g.PUT("agreeGroupRequest/:request_id", hdls.AgreeGroupRequest())
+		g.PUT("refuseGroupRequest/:request_id", hdls.RefuseGroupRequest())
 	}
 
 	r := v1.Group("record", AuthMiddleware(authorizer))

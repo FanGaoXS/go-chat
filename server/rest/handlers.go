@@ -179,7 +179,7 @@ func (h *handlers) AgreeFriendRequest() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		id, err := strconv.ParseInt(c.Param("request_id"), 10, 64)
 		if err != nil {
 			WrapGinError(c, errors.New(errors.InvalidArgument, err, "invalid id"))
 			return
@@ -195,7 +195,7 @@ func (h *handlers) AgreeFriendRequest() gin.HandlerFunc {
 			return
 		}
 
-		if err = h.application.AgreeFriendRequest(ctx, id); err != nil {
+		if err = h.application.AgreeFriendRequest(ctx, id, ui.Subject); err != nil {
 			WrapGinError(c, err)
 			return
 		}
@@ -210,7 +210,7 @@ func (h *handlers) RefuseFriendRequest() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
 
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		id, err := strconv.ParseInt(c.Param("request_id"), 10, 64)
 		if err != nil {
 			WrapGinError(c, errors.New(errors.InvalidArgument, err, "invalid id"))
 			return
@@ -226,7 +226,7 @@ func (h *handlers) RefuseFriendRequest() gin.HandlerFunc {
 			return
 		}
 
-		if err = h.application.RefuseFriendRequest(ctx, id); err != nil {
+		if err = h.application.RefuseFriendRequest(ctx, id, ui.Subject); err != nil {
 			WrapGinError(c, err)
 			return
 		}
@@ -325,6 +325,17 @@ func (h *handlers) ExitGroup() gin.HandlerFunc {
 func (h *handlers) GroupRequestFromMe() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		res, err := h.application.GroupRequestsFrom(ctx, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }
 
@@ -352,6 +363,17 @@ func (h *handlers) SendGroupRequest() gin.HandlerFunc {
 func (h *handlers) GroupInvitationsToMe() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+
+		res, err := h.application.GroupInvitationsTo(ctx, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }
 
@@ -361,7 +383,7 @@ func (h *handlers) AgreeGroupInvitation() gin.HandlerFunc {
 
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		id, err := strconv.ParseInt(c.Param("invitation_id"), 10, 64)
 		if err != nil {
 			WrapGinError(c, err)
 			return
@@ -372,11 +394,11 @@ func (h *handlers) AgreeGroupInvitation() gin.HandlerFunc {
 			WrapGinError(c, err)
 			return
 		}
-
 		if invitation.Receiver != ui.Subject {
 			WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你不可以处理该邀请"))
 			return
 		}
+
 		if err = h.application.AgreeGroupInvitation(ctx, id); err != nil {
 			WrapGinError(c, err)
 			return
@@ -392,7 +414,7 @@ func (h *handlers) RefuseGroupInvitation() gin.HandlerFunc {
 
 		ctx := c.Request.Context()
 		ui := auth.FromContext(ctx)
-		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		id, err := strconv.ParseInt(c.Param("invitation_id"), 10, 64)
 		if err != nil {
 			WrapGinError(c, err)
 			return
@@ -403,11 +425,11 @@ func (h *handlers) RefuseGroupInvitation() gin.HandlerFunc {
 			WrapGinError(c, err)
 			return
 		}
-
 		if invitation.Receiver != ui.Subject {
 			WrapGinError(c, errors.New(errors.PermissionDenied, nil, "你不可以处理该邀请"))
 			return
 		}
+
 		if err = h.application.RefuseGroupInvitation(ctx, id); err != nil {
 			WrapGinError(c, err)
 			return
@@ -815,24 +837,142 @@ func (h *handlers) RemoveAdminsFromGroup() gin.HandlerFunc {
 func (h *handlers) SendGroupInvitation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// POST
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+		groupID, err := strconv.ParseInt(c.PostForm("group_id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		userSubject := strings.TrimSpace(c.PostForm("user_subject"))
+		if userSubject == "" {
+			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "invalid user_subject: empty"))
+			return
+		}
+
+		ok, err := h.group.IsMemberOfGroup(ctx, groupID, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if !ok {
+			WrapGinError(c, errors.Newf(errors.PermissionDenied, nil, "你不是群[%d]成员", groupID))
+			return
+		}
+
+		if err = h.application.CreateGroupInvitation(ctx, ui.Subject, userSubject, groupID); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
 	}
 }
 
 func (h *handlers) GroupRequestsToGroup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		ok, err := h.group.IsAdminOfGroup(ctx, id, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if !ok {
+			WrapGinError(c, errors.Newf(errors.PermissionDenied, nil, "你不是群[%d]的管理员", id))
+			return
+		}
+
+		res, err := h.application.GroupRequestsTo(ctx, id)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }
 
 func (h *handlers) AgreeGroupRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+		id, err := strconv.ParseInt(c.Param("request_id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		request, err := h.application.GetGroupRequest(ctx, id)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		ok, err := h.group.IsAdminOfGroup(ctx, request.GroupID, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if !ok {
+			WrapGinError(c, errors.Newf(errors.PermissionDenied, nil, "你不是群[%d]的管理员", id))
+			return
+		}
+
+		if err = h.application.AgreeGroupRequest(ctx, id, ui.Subject); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
 	}
 }
 
 func (h *handlers) RefuseGroupRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// PUT
+
+		ctx := c.Request.Context()
+		ui := auth.FromContext(ctx)
+		id, err := strconv.ParseInt(c.Param("request_id"), 10, 64)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		request, err := h.application.GetGroupRequest(ctx, id)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		ok, err := h.group.IsAdminOfGroup(ctx, request.GroupID, ui.Subject)
+		if err != nil {
+			WrapGinError(c, err)
+			return
+		}
+		if !ok {
+			WrapGinError(c, errors.Newf(errors.PermissionDenied, nil, "你不是群[%d]的管理员", id))
+			return
+		}
+
+		if err = h.application.RefuseGroupRequest(ctx, id, ui.Subject); err != nil {
+			WrapGinError(c, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
 	}
 }
 

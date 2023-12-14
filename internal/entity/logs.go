@@ -63,10 +63,11 @@ type GroupInvitationLog struct {
 }
 
 type GroupRequestLog struct {
-	ID      int64      `json:"id"`
-	GroupID int64      `json:"group_id"`
-	Sender  string     `json:"sender"`
-	Status  LogsStatus `json:"status"`
+	ID       int64      `json:"id"`
+	GroupID  int64      `json:"group_id"`
+	Sender   string     `json:"sender"`
+	Approver NullString `json:"approver"`
+	Status   LogsStatus `json:"status"`
 
 	CreatedAt time.Time `json:"created_at"`
 }

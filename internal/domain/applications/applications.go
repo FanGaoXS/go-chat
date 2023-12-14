@@ -13,8 +13,8 @@ type Applications interface {
 	// FriendRequest 好友申请
 
 	CreateFriendRequest(ctx context.Context, sender, receiver string) error
-	AgreeFriendRequest(ctx context.Context, id int64) error
-	RefuseFriendRequest(ctx context.Context, id int64) error
+	AgreeFriendRequest(ctx context.Context, id int64, approver string) error
+	RefuseFriendRequest(ctx context.Context, id int64, approver string) error
 	GetFriendRequest(ctx context.Context, id int64) (*entity.FriendRequestLog, error)
 	FriendRequestsFrom(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
 	FriendRequestsTo(ctx context.Context, subject string) ([]*entity.FriendRequestLog, error)
@@ -30,8 +30,8 @@ type Applications interface {
 	// GroupRequest 申请加群
 
 	CreateGroupRequest(ctx context.Context, sender string, groupID int64) error
-	AgreeGroupRequest(ctx context.Context, id int64) error
-	RefuseGroupRequest(ctx context.Context, id int64) error
+	AgreeGroupRequest(ctx context.Context, id int64, approver string) error
+	RefuseGroupRequest(ctx context.Context, id int64, approver string) error
 	GetGroupRequest(ctx context.Context, id int64) (*entity.GroupRequestLog, error)
 	GroupRequestsFrom(ctx context.Context, sender string) ([]*entity.GroupRequestLog, error)
 	GroupRequestsTo(ctx context.Context, groupID int64) ([]*entity.GroupRequestLog, error)
@@ -118,7 +118,7 @@ func (a *applications) CreateFriendRequest(ctx context.Context, sender, receiver
 	return nil
 }
 
-func (a *applications) AgreeFriendRequest(ctx context.Context, id int64) error {
+func (a *applications) AgreeFriendRequest(ctx context.Context, id int64, approver string) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func (a *applications) AgreeFriendRequest(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (a *applications) RefuseFriendRequest(ctx context.Context, id int64) error {
+func (a *applications) RefuseFriendRequest(ctx context.Context, id int64, approver string) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -284,8 +284,8 @@ func (a *applications) CreateGroupInvitation(ctx context.Context, sender, receiv
 		Status:   entity.LogsStatusPending,
 	}
 
-	if got != nil {
-		if err = a.storage.UpdateGroupRequestLogStatus(ses, forupdate.ID, entity.LogsStatusAgreed); err != nil {
+	if forupdate != nil {
+		if err = a.storage.UpdateGroupRequestLogStatus(ses, forupdate.ID, sender, entity.LogsStatusAgreed); err != nil {
 			return err
 		}
 
@@ -432,9 +432,13 @@ func (a *applications) CreateGroupRequest(ctx context.Context, sender string, gr
 		return err
 	}
 
-	_, err = a.storage.GetGroupByID(ses, groupID)
+	g, err := a.storage.GetGroupByID(ses, groupID)
 	if err != nil {
 		return err
+	}
+
+	if !g.IsPublic {
+		return errors.Newf(errors.PermissionDenied, nil, "群[%d]是非公开的群组", groupID)
 	}
 
 	ok, err := a.storage.IsMemberOfGroup(ses, sender, groupID)
@@ -467,7 +471,7 @@ func (a *applications) CreateGroupRequest(ctx context.Context, sender string, gr
 		Status:  entity.LogsStatusPending,
 	}
 
-	if got != nil {
+	if forUpdate != nil {
 		if err = a.storage.UpdateGroupInvitationLogStatus(ses, forUpdate.ID, entity.LogsStatusAgreed); err != nil {
 			return err
 		}
@@ -493,7 +497,7 @@ func (a *applications) CreateGroupRequest(ctx context.Context, sender string, gr
 	return nil
 }
 
-func (a *applications) AgreeGroupRequest(ctx context.Context, id int64) error {
+func (a *applications) AgreeGroupRequest(ctx context.Context, id int64, approver string) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -510,7 +514,7 @@ func (a *applications) AgreeGroupRequest(ctx context.Context, id int64) error {
 	if forUpdate.Status != entity.LogsStatusPending {
 		return errors.Newf(errors.InvalidArgument, nil, "入群申请已经被处理")
 	}
-	if err = a.storage.UpdateGroupRequestLogStatus(ses, id, entity.LogsStatusAgreed); err != nil {
+	if err = a.storage.UpdateGroupRequestLogStatus(ses, id, approver, entity.LogsStatusAgreed); err != nil {
 		return err
 	}
 
@@ -529,7 +533,7 @@ func (a *applications) AgreeGroupRequest(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (a *applications) RefuseGroupRequest(ctx context.Context, id int64) error {
+func (a *applications) RefuseGroupRequest(ctx context.Context, id int64, approver string) error {
 	ses, err := a.storage.NewSession(ctx)
 	if err != nil {
 		return err
@@ -546,7 +550,7 @@ func (a *applications) RefuseGroupRequest(ctx context.Context, id int64) error {
 	if forUpdate.Status != entity.LogsStatusPending {
 		return errors.Newf(errors.InvalidArgument, nil, "入群申请已经被处理")
 	}
-	if err = a.storage.UpdateGroupRequestLogStatus(ses, id, entity.LogsStatusRefused); err != nil {
+	if err = a.storage.UpdateGroupRequestLogStatus(ses, id, approver, entity.LogsStatusRefused); err != nil {
 		return err
 	}
 
