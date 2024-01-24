@@ -3,18 +3,17 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"errors"
 	"fmt"
-	"net/url"
-	"path/filepath"
-	"runtime"
+	"net/http"
 
 	"fangaoxs.com/go-chat/environment"
 	"fangaoxs.com/go-chat/internal/storage"
 
 	"github.com/golang-migrate/migrate/v4"
 	dStub "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	_ "github.com/lib/pq" // 导入 PostgresSQL 驱动
 )
 
@@ -58,19 +57,20 @@ func (p *postgres) NewSession(ctx context.Context) (storage.Session, error) {
 	return NewTxContext(ctx, p.db), nil
 }
 
+//go:embed migrations/*.sql
+var migrations embed.FS
+
 func (p *postgres) migrate() error {
 	instance, err := dStub.WithInstance(p.db, &dStub.Config{})
 	if err != nil {
 		return fmt.Errorf("unable to create migration driver instance: %w", err)
 	}
+	src, err := httpfs.New(http.FS(migrations), "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to open migration source: %w", err)
+	}
 
-	// migrations目录的路径
-	_, f, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(f)
-	u, _ := url.Parse(dir)
-	u.Scheme = "file"
-	u = u.JoinPath("migrations")
-	m, err := migrate.NewWithDatabaseInstance(u.String(), "postgres", instance)
+	m, err := migrate.NewWithInstance("httpfs", src, "postgres", instance)
 	if err != nil {
 		return fmt.Errorf("unable to create migration instance: %w", err)
 	}

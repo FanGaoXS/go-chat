@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"sync"
 
 	"github.com/joho/godotenv"
 )
@@ -105,20 +106,24 @@ func Get() (Env, error) {
 
 var (
 	envLoaded = false
+	mu        sync.Mutex
 )
 
 func load() error {
+	mu.Lock()
+	defer mu.Unlock()
 	if envLoaded {
 		return nil
 	}
 
-	// 定位到根目录的.env文件
+	//定位到根目录的.env文件
 	_, f, _, _ := runtime.Caller(0) // 当前执行的文件，即此文件environment/env.go
 	basepath := filepath.Dir(f)
 	envFile := path.Join(basepath, "../.env")
-	if err := godotenv.Load(envFile); err != nil {
-		return err
-	}
+	_ = godotenv.Load(envFile)
+
+	//从os读取环境变量，忽略error
+	_ = godotenv.Load()
 	envLoaded = true
 	return nil
 }

@@ -38,7 +38,7 @@ type handlers struct {
 func (h *handlers) Shack(authorizer auth.Authorizer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
-		token := strings.TrimSpace(c.Query("token"))
+		token := strings.TrimSpace(c.Query("subject"))
 		if token == "" {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty subject"))
 			return
