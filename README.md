@@ -64,13 +64,9 @@ ws错误处理
 
 ## docker
 
-### build docker image
+### run with docker container
 ```bash
 make docker-build
-```
-
-### run docker image
-```bash
 docker run go-chat
 ```
 
