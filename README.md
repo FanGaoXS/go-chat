@@ -62,3 +62,20 @@ ws错误处理
 
 申请加入群组
 
+## docker
+
+### build docker image
+```bash
+make docker-build
+```
+
+### run docker image
+```bash
+docker run go-chat
+```
+
+### run with docker-compose
+```bash
+make docker-build
+docker-compose up
+```
