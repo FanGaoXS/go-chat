@@ -11,14 +11,14 @@ services:
   go-chat:
     image: go-chat:latest
     environment:
-      - APP_NAME=go-chat
-      - APP_VERSION=v2.0.1
-      - LOG_LEVEL=INFO
-      - ADMIN_NAME=admin
-      - REST_LISTEN_ADDR=0.0.0.0:8090
-      - WEBSOCKET_LISTEN_ADDR=0.0.0.0:8091
-      - DSN=postgres://postgres:@my-db:5432/chatdev?sslmode=disable
-      - BYPASS_AUTH=false
+      APP_NAME: go-chat
+      APP_VERSION: v2.0.1
+      LOG_LEVEL: INFO
+      ADMIN_NAME: admin
+      REST_LISTEN_ADDR: 0.0.0.0:8090
+      WEBSOCKET_LISTEN_ADDR: 0.0.0.0:8091
+      DSN: postgres://postgres:@my-db:5432/chatdev?sslmode=disable
+      BYPASS_AUTH: false
     ports:
       - "8090:8090"
       - "8091:8091"
