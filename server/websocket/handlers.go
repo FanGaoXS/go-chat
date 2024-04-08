@@ -38,6 +38,7 @@ type handlers struct {
 func (h *handlers) Shack(authorizer auth.Authorizer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// GET
+
 		token := strings.TrimSpace(c.Query("subject"))
 		if token == "" {
 			WrapGinError(c, errors.New(errors.InvalidArgument, nil, "empty subject"))
@@ -65,6 +66,9 @@ func (h *handlers) Shack(authorizer auth.Authorizer) gin.HandlerFunc {
 			return
 		}
 
+		if !c.IsWebsocket() {
+			WrapGinError(c, errors.New(errors.Unavailable, nil, "only support websocket"))
+		}
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			WrapGinError(c, errors.New(errors.Internal, err, "create websocket connection failed"))
